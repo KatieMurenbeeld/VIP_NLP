@@ -20,3 +20,12 @@ article_codes <- read.csv(file = 'data/article_coding.csv')
 article_codes <- article_codes %>% 
   filter(!Link=='') %>% 
   mutate(id = row_number())
+
+urls <- article_codes$Link
+
+link <- urls[1]
+page <- GET(link)
+page_text <- content(page, as = 'text')
+  
+  
+  
