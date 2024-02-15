@@ -46,14 +46,15 @@ text <- text_body[[2]]
 str_extract_all(page_text, regex("(?<=<h1).+(?=</h1>)"), simplify = TRUE) 
 str_extract(page_text, regex("(?<=<h1).*?(?=</h1>)")) 
 
-str_extract_all(page_text, regex("(?<=<p>)"), simplify = TRUE)
-test <- str_extract_all(page_text, regex("(?<=<p>).+"), simplify = TRUE) # only goes up to new line break of paragraph that I want.
+str_extract_all(page_text, regex("(?<=<p>).+"), simplify = TRUE)
+test <- str_extract_all(page_text, regex("(?<=<p>).+", multiline = TRUE), simplify = TRUE) # only goes up to new line break of paragraph that I want.
 str_count(page_text, "<p>")
 
+page_text_noline <- str_remove_all(page_text, "\n")
 
+str_extract_all(page_text_noline, regex("(?<=<p>).+"), simplify = TRUE) 
 
-
-
+## Breadcrumb for next time is to figure out the regular expression.
 
 ##############################
 # Testing out with rvest
