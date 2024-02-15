@@ -39,14 +39,16 @@ ua <- "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like
 
 link <- urls[1]
 page <- GET(link, user_agent(ua))
-page_text <- httr::content(page, as = 'text')
-text_body <- str_extract_all(page_text, regex("(?<=<p>).*?(?=</p>)"), simplify = TRUE) 
+page_text <- httr::content(page, as = "text")
+text_body <- str_extract_all(page_text, regex("(?<=<p>).+(?=</p>)"), simplify = TRUE) 
+text <- text_body[[2]]
 
+str_extract_all(page_text, regex("(?<=<h1).+(?=</h1>)"), simplify = TRUE) 
+str_extract(page_text, regex("(?<=<h1).*?(?=</h1>)")) 
 
-
-
-
-
+str_extract_all(page_text, regex("(?<=<p>)"), simplify = TRUE)
+test <- str_extract_all(page_text, regex("(?<=<p>).+"), simplify = TRUE) # only goes up to new line break of paragraph that I want.
+str_count(page_text, "<p>")
 
 
 
