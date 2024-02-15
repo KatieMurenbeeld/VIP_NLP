@@ -34,12 +34,28 @@ article_codes <- article_codes %>%
 
 urls <- unique(article_codes$Link)
 
-link <- urls[1]
-page <- GET(link)
-page_text <- httr::content(page, as = 'text')
+# set up a user agent so that the website doesn't think you are a robot
+ua <- "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36"
 
+link <- urls[1]
+page <- GET(link, user_agent(ua))
+page_text <- httr::content(page, as = 'text')
+text_body <- str_extract_all(page_text, regex("(?<=<p>).*?(?=</p>)"), simplify = TRUE) 
+
+
+
+
+
+
+
+
+
+
+
+
+##############################
 # Testing out with rvest
-page_html <- read_html(link)
+page_html <- read_html(link, user_agent = ua)
   
 # full Xpath to article content
 # Title
@@ -50,25 +66,8 @@ page_html <- read_html(link)
 # /html/body/div[2]/div[3]/section[2]/main/div[2]/div/div[1]/div[1]/div[2]
 # Article text
 # /html/body/div[2]/div[3]/section[2]/main/div[2]/div/div[1]/div[3]/p
+# //*[@id="document-view--ascii"]/div/div[1]/div[3]/p
+test_p <- page_html %>%
+  html_nodes(xpath = '//*[@id="document-view--ascii"]/div/div[1]/div[3]/p') %>%
+  html_text2()
 
-
-
-
-
-
-
-
-
-
-
-
-=======
-urls <- article_codes$Link
-
-link <- urls[1]
-page <- GET(link)
-page_text <- content(page, as = 'text')
-  
-  
-  
->>>>>>> refs/remotes/origin/main
