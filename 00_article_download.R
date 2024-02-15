@@ -61,7 +61,7 @@ test <- gsub(".*h1", "", page_text)
 test_noline <- str_remove_all(test, "\n")
 str_extract(test_noline, regex("(?<=<p>).+?(?=</p>)")) ## this worked!!!
 
-## Breadcrumb for next time is to figure out the regular expression.
+## Breadcrumb for next time is to finish updating this code up to creating the data frame combining the new article code framework with the article text.
 
 ##############################
 # Testing out with rvest
