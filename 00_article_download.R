@@ -32,8 +32,12 @@ ua <- "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like
 link <- urls[1]
 page <- GET(link, user_agent(ua))
 page_text <- httr::content(page, as = "text")
-text_body <- str_extract_all(page_text, regex("(?<=<p>).+(?=</p>)", multiline = TRUE), simplify = TRUE) 
-text <- text_body[[2]]
+tmp <- gsub(".*<h1", "", page_text) 
+article_title <- str_extract_all(tmp, regex("(?<=clipcopy\">).+?(?=</h1>)"))
+author <- str_extract_all(tmp, regex("(?<=Byline: ).+?(?=</span>)"))
+pub_date <- str_extract_all(tmp, regex("(?<=display-date\">).+?(?=</span>)"))
+tmp_noline <- str_remove_all(tmp, "\n")
+article_text <- str_extract(tmp_noline, regex("(?<=<p>).+?(?=</p>)"))
 
 test <- gsub(".*h1", "", page_text) 
 test2 <- gsub("(?<=")
