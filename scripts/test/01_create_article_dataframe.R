@@ -39,3 +39,6 @@ for (url in urls[1:2]){
                                          pub_date, 
                                          article_text)
 }
+
+#################
+# Breadcrumb Need to figure out loop and skipping articles we already have so that we don't continuously download the same 200 articles
