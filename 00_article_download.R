@@ -44,7 +44,10 @@ for (url in urls[1:2]){
   pub_date <- str_extract_all(tmp, regex("(?<=display-date\">).+?(?=</span>)"))
   tmp_noline <- str_remove_all(tmp, "\n")
   article_text <- str_extract(tmp_noline, regex("(?<=<p>).+?(?=</p>)"))
-  df_article<- rbind(df_article, c(article_title, author, pub_date, article_text))
+  df_article[nrow(df_article) + 1,] <- c(article_title, 
+                                        author, 
+                                        pub_date, 
+                                        article_text)
 }
 
 
