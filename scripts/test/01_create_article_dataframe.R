@@ -10,10 +10,18 @@ options(
 
 # Load the new_article_coding_ids.csv
 article_codes <- read.csv(file = "data/processed/new_article_coding_ids.csv")
+article_list_prev <- read.csv(file = "data/processed/article_list_20-02-2024-1405.csv") 
+article_list_prev <- article_list_prev %>% 
+  select(X, Link, ID)
+
+## Get new urls from article_codes
+article_list_new <- article_codes %>%
+  select(X, Link, ID)
 
 # Create list of article urls
 ## need to trim the leading and trailing white spaces
-urls <- trimws(unique(article_codes$Link))
+article_links <- anti_join(article_list_new, article_list_prev, by="ID")
+urls <- trimws(unique(article_links$Link))
 
 # Set up a user agent so that the website doesn't think you are a robot
 ua <- "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36"
