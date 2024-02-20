@@ -29,4 +29,7 @@ article_codes <- article_codes %>%
 # Save as a new csv in the data/processed folder
 write.csv(article_codes, "data/processed/new_article_coding_ids.csv")
 
-
+# Save a csv to reference newly added articles
+article_list <- article_codes %>%
+  select(X, Link, ID)
+write.csv(article_list, paste0("data/processed/article_list_", format(Sys.time(), "%d-%m-%Y-%H%M"), ".csv"))  
