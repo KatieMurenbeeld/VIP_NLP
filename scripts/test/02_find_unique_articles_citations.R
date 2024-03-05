@@ -7,7 +7,9 @@ articles <- as.data.frame(unique(pq_articles$Title))
 
 #---Load in the text files from ProQuest-----
 
-data <- read_file("data/original/ProQuestDocuments-2024-03-05.txt")
+data <- read_file("data/original/ProQuestDocuments-2024-03-05_02.txt")
+
+#Separate the articles  
 
 sep <- "____________________________________________________________"
 
@@ -18,5 +20,17 @@ result <- regmatches(data, gregexpr(pattern, data))
 df <- result %>%
   map_df(as_tibble)
 
+number <- 1:84
+doc_num <- paste0("Document ", number)
 
+pattern_2 <- paste0(doc_num,"\\s*(.*?)\\s*",sep)
+
+result_2 <- regmatches(data, gregexpr(pattern_2, data))
+
+df_2 <- result_2 %>%
+  map_df(as_tibble)
+
+library(janeaustenr)
+
+books <- austen_books()
                             
