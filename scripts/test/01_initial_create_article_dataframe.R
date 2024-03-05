@@ -34,13 +34,18 @@ df_article <- data.frame(Title=character(),
                          Article_Text=character(), 
                          Link=character())
 
-for (url in urls[3:5]){
+df_article <- read_csv("data/processed/article_text.csv")
+
+for (url in urls[1:50]){
   link <- url
   page <- GET(link, user_agent(ua))
   page_text <- httr::content(page, as = "text")
   tmp <- gsub(".*<h1", "", page_text) 
   article_title <- str_extract_all(tmp, regex("(?<=clipcopy\">).+?(?=</h1>)"))
   author <- str_extract_all(tmp, regex("(?<=Byline: ).+?(?=</span>)"))
+  if(lengths(author) == 0){
+    author <- "none given"
+  } else{author <- author}
   pub_date <- str_extract_all(tmp, regex("(?<=display-date\">).+?(?=</span>)"))
   tmp_noline <- str_remove_all(tmp, "\n")
   article_text <- str_extract(tmp_noline, regex("(?<=<p>).+?(?=</p>)"))
