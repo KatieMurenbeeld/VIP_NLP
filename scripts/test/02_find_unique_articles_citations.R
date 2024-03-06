@@ -11,31 +11,28 @@ data <- read_file("data/original/ProQuestDocuments-2024-03-05_02.txt")
 
 #Separate the articles  
 new_df <- data.frame(doc_id=character(),
-                     info=character())
+                     text=character())
 
 sep <- "____________________________________________________________"
 number <- 1:84
 doc_num <- paste0("Document ", number, " ")
 
 doc_id <- list()
-info <- list()
+text <- list()
 
 for (i in doc_num){
   tmp_id <- i
   tmp_pattern <- paste0(i,"\\s*(.*?)\\s*",sep)
-  tmp_info <- regmatches(data, gregexpr(tmp_pattern, data))
+  tmp_text <- regmatches(data, gregexpr(tmp_pattern, data))
   doc_id <- tmp_id
-  info <- tmp_info
+  text <- tmp_text
   new_df[nrow(new_df) + 1,] <- c(doc_id, 
-                                 info)
+                                 text)
 }
 
 articles <- new_df %>%
-  separate_rows(info, sep = "\r\n\r\n")
+  separate_rows(text, sep = "\r\n\r\n")
 
-write.csv(articles, file = here::here("data/processed/02_module_articles.csv"))
+write.csv(articles, file = here::here(paste0("data/processed/02_module_articles_", Sys.Date(), ".csv")))
 
-library(janeaustenr)
-
-books <- austen_books()
                             
