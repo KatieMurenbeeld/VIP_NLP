@@ -37,14 +37,21 @@ doc_num <- paste0("Document ", number, " ")
 doc_id <- list()
 info <- list()
 
-for (i in doc_num){
+for (i in doc_num[1:3]){
   #print(i)
-  
-  doc_id <- i
-  tmp_pattern <- paste0(doc_num,"\\s*(.*?)\\s*",sep)
-  info <- regmatches(data, gregexpr(tmp_pattern, data))
-  dat <- data.frame(x = info)
-  output <- c(doc_id, info)
+  tmp_id <- i
+  print(tmp_id)
+  tmp_pattern <- paste0(i,"\\s*(.*?)\\s*",sep)
+  print(tmp_pattern)
+  tmp_info <- regmatches(data, gregexpr(tmp_pattern, data))
+  print(tmp_info)
+  #dat <- data.frame(x = info)
+  #doc_id <- append(doc_id, list(tmp_id))
+  #info <- append(info, list(tmp_info))
+  doc_id <- tmp_id
+  info <- tmp_info
+  new_df[nrow(new_df) + 1,] <- c(doc_id, 
+                                 info)
 }
 
 df_2 <- as.data.frame(output)
