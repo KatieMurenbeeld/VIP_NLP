@@ -33,6 +33,6 @@ for (i in doc_num){
 articles <- new_df %>%
   separate_rows(text, sep = "\r\n\r\n")
 
-write.csv(articles, file = here::here(paste0("data/processed/02_module_articles_", Sys.Date(), ".csv")))
+write.csv(articles, file = here::here(paste0("data/processed/02_module_articles_", Sys.Date(), ".csv")), row.names = FALSE)
 
                             
