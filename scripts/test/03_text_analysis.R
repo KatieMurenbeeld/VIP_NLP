@@ -3,11 +3,115 @@ library(tidyverse)
 library(tidytext)
 library(SnowballC)
 library(ggplot2)
+library(tigris)
 
 # Read in the data
 article_codes <- read.csv(file = here::here("data/original/new_article_coding.csv"))
 original_articles <- read.csv(here::here("data/processed/02_module_articles_2024-03-06.csv"))
 
+# Exploratory Analysis
+
+article_codes <- article_codes %>%
+  drop_na(Value_Orientation)
+  
+
+article_codes$Species <- str_replace(article_codes$Species, 'Grizzly Bears', 'Grizzly Bear')
+
+n_species <- article_codes %>%
+  group_by(Species) %>%
+  count(Species, sort = TRUE) %>%
+  ggplot(aes(Species, n, fill = Species)) + 
+  geom_col() + 
+  theme_bw() +
+  theme(legend.position = "none", 
+        axis.text.x = element_text(size = 22, angle = 60),
+        axis.title.x = element_text(size = 24), 
+        axis.text.y = element_text(size = 22)) 
+
+ggsave(here::here("presentation/n_article_species.png"), n_species, width = 10, height = 14, dpi = 300)  
+
+
+misspelling <- c('Practicioner','Practioner', 'Practictioner', 'Practioners', 'Practitioners')
+
+for (focus in misspelling) {
+article_codes$Focus <- str_replace(article_codes$Focus, focus, 'Practitioner')
+}
+article_codes$Focus <- trimws(str_replace(article_codes$Focus, 'Wildllife', 'Wildlife'))
+
+n_focus <- article_codes %>%
+  group_by(Focus) %>%
+  count(Focus, sort = TRUE) %>%
+  ggplot(aes(Focus, n, fill = Focus)) + 
+  geom_col() + 
+  theme_bw() +
+  theme(legend.position = "none", 
+        axis.text.x = element_text(size = 22, angle = 60),
+        axis.title.x = element_text(size = 24), 
+        axis.text.y = element_text(size = 22)) 
+
+ggsave(here::here("presentation/n_article_focus.png"), n_focus, width = 10, height = 14, dpi = 300)  
+
+article_codes$Conflict_Type <- trimws(article_codes$Conflict_Type)
+article_codes$Conflict_Type <- str_replace(article_codes$Conflict_Type, 'H-H', 'Human-Human')
+article_codes$Conflict_Type <- str_replace(article_codes$Conflict_Type, 'H-W', 'Human-Wildlife')
+article_codes$Conflict_Type <- str_replace(article_codes$Conflict_Type, 'N-W', 'Nature-Wildlife')
+article_codes$Conflict_Type <- trimws(str_replace(article_codes$Conflict_Type, 'Conflict', ''))
+
+n_conflict <- article_codes %>%
+  group_by(Conflict_Type) %>%
+  count(Conflict_Type, sort = TRUE) %>%
+  ggplot(aes(Conflict_Type, n, fill = Conflict_Type)) + 
+  geom_col() + 
+  theme_bw() +
+  theme(legend.position = "none", 
+        axis.text.x = element_text(size = 22),
+        axis.title.x = element_text(size = 24), 
+        axis.text.y = element_text(size = 22)) 
+ 
+
+ggsave(here::here("presentation/n_article_conflict.png"), n_conflict, width = 10, height = 14, dpi = 300)  
+  
+
+article_codes %>%
+  group_by(Title) %>%
+  summarise(mean_vo = mean(Value_Orientation)) %>%
+  count(mean_vo, sort = TRUE) %>%
+  ggplot(aes(mean_vo)) + 
+  geom_density()
+
+article_codes %>%
+  group_by(Publication_State) %>%
+  count(Publication_State, sort = TRUE)
+
+# Create a map showing number of articles per state
+## Create data frame
+
+state_df <- article_codes %>%
+  drop_na(Value_Orientation) %>%
+  group_by(Publication_State) %>%
+  summarise(mean_value = mean(Value_Orientation), n = n(), n_article = length(unique(Title)))
+
+## Create state map variable
+us_states <- states(cb = TRUE) %>%
+  filter(GEOID < "60") %>%
+  filter(GEOID != "02") %>%
+  filter(GEOID != "15") 
+
+## Join the 2 data frames and replace mean_values of NA with 0s
+state_val <- right_join(state_df, us_states, by = c("Publication_State" = "STUSPS"))
+
+
+n_article_map <- ggplot() +
+  geom_sf(data = us_states, fill = NA, color = "black", size = 0.1) +
+  geom_sf(data = state_val, aes(geometry = geometry, fill = n_article), size = 0.05) +
+  labs(title = "Total Number of Articles") +
+  # scale_fill_discrete(name = "Mean Value Orientation") +
+  theme(plot.title = element_text(size=12),
+        legend.title = element_text(size=10)) +
+  theme_bw()
+ggsave(here::here("presentation/n_article_map.png"), n_article_map, width = 14, height = 14, dpi = 300) 
+
+# Text Analysis
 # Preprocess the data
 articles_text <- original_articles %>%
   group_by(doc_id) %>%
@@ -31,7 +135,7 @@ article_codes$Title <- tolower(trimws(article_codes$Title))
 articles_joined <- left_join(articles_text, article_codes, by = c("title" = "Title"))
 
 ## Write to csv
-write.csv(articles_joined, here::here("data/processed/03_joined-article_code_text.csv"), row.names = FALSE)
+#write.csv(articles_joined, here::here("data/processed/03_joined-article_code_text.csv"), row.names = FALSE)
 
 ## Tokenize
 tidy_articles <- articles_joined %>%
@@ -71,48 +175,64 @@ tidy_articles %>%
 
 ## Plot the most common words in the tidy text data frame
 
-tidy_articles %>%
+all_word <- tidy_articles %>%
   count(word, sort = TRUE) %>%
-  filter(n > 200) %>%
+  filter(n > 250) %>%
   mutate(word = reorder(word, n)) %>%
-  ggplot(aes(n, word)) +
+  ggplot(aes(word, n)) +
   geom_col() +
-  labs(y = NULL)
+  labs(x = NULL) +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 24, angle = 90),
+        axis.text.y = element_text(size = 24))
+
+ggsave(here::here("presentation/all_common_words.png"), width = 15, height = 12, dpi = 300)
 
 ## Can also plot by species
 
 unique(tidy_articles$Species) # Need to clean up names
 
 ### Can enter your species of interest here
-species <- c("Grizzly Bears", "Grizzly Bear")
+species <- "Boars"
 
-tidy_articles %>%
+species_words <- tidy_articles %>%
   filter(Species %in% species) %>%
   count(word, sort = TRUE) %>%
   slice_max(n, n=10) %>%
   filter(n > 5) %>%
   mutate(word = reorder(word, n)) %>%
-  ggplot(aes(n, word)) +
+  ggplot(aes(word, n)) +
   geom_col() +
-  labs(y = NULL) + 
-  ggtitle(paste(species, "10 most common words"))
+  labs(x = NULL) + 
+  ggtitle(paste(species, "10 most common words")) +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 24, angle = 90),
+        axis.text.y = element_text(size = 24))
 
-tidy_articles %>%
+ggsave(here::here(paste0("presentation/", species, "_common_words.png")), species_words, width = 15, height = 12, dpi = 300)
+
+species_stems <- tidy_articles %>%
   filter(Species %in% species) %>%
   count(stem, sort = TRUE) %>%
   slice_max(n, n=10) %>%
   filter(n > 5) %>%
   mutate(stem = reorder(stem, n)) %>%
-  ggplot(aes(n, stem)) +
+  ggplot(aes(stem, n)) +
   geom_col() +
-  labs(y = NULL) + 
-  ggtitle(paste(species, "10 most common stems"))
+  labs(x = NULL) +  
+  ggtitle(paste(species, "10 most common stems"))  +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 24, angle = 90),
+        axis.text.y = element_text(size = 24))
+
+ggsave(here::here(paste0("presentation/", species, "_common_stems.png")), species_stems, width = 15, height = 12, dpi = 300)
+
 
 ## Could also plot by Focus or any other variable
 
 unique(tidy_articles$Focus) # Need to clean up names
 
-focus <- c("Wildlife", "Wildllife")
+focus <- c("People")
 
 tidy_articles %>%
   filter(Focus %in% focus) %>%
