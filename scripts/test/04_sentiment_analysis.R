@@ -22,24 +22,95 @@ tidy_articles <- joined_articles %>%
   anti_join(my_stop_words) %>%
   mutate(stem = wordStem(word))
 
-# create a data frame with the bing sentiment lexicon
+# can also look at sentences
+tidy_sentences <- joined_articles %>%
+  unnest_tokens(sentences, full_text, token = "sentences") %>%
+  filter(!is.na(sentences)) %>%
+  mutate(sentenceID = 1:n()) %>%
+  unnest_tokens(word, sentences, 'words') %>%
+  anti_join(stop_words) %>%
+  anti_join(my_stop_words)
 
-bing_sent <- tidy_articles %>%
+# create a data frame with 3 different sentiment lexicons
+
+df_bing <- tidy_articles %>%
   inner_join(get_sentiments("bing")) %>%
   count(word, sentiment, sort = TRUE) %>%
   ungroup()
 
-afinn_sent <- tidy_articles %>%
+species <- c("Boars")
+
+df_bing_species <- tidy_articles %>%
+  filter(Species %in% species) %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup() 
+
+focus <- c("Policy")
+
+df_bing_focus <- tidy_articles %>%
+  filter(Focus %in% focus) %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup() 
+
+df_afinn <- tidy_articles %>%
   inner_join(get_sentiments("afinn")) %>%
   count(word, value, sort = TRUE) %>%
   ungroup()
 
-nrc_sent <- tidy_articles %>%
+df_nrc <- tidy_articles %>%
   inner_join(get_sentiments("nrc")) %>%
   count(word, sentiment, sort = TRUE) %>%
   ungroup()
 
+df_afinn_sent <- tidy_sentences %>%
+  inner_join(get_sentiments("afinn")) %>%
+  group_by(doc_id, sentenceID) %>% 
+  summarise(sentiment = sum(value),
+            dom_mut = mean(Value_Orientation)) %>%
+  group_by(doc_id) %>%
+  mutate(method = "AFINN") %>%
+  ungroup()
+
 # Plot the sentiments
+df_bing %>%
+  group_by(sentiment) %>%
+  slice_max(n, n = 10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word, fill = sentiment)) + 
+  scale_fill_manual(values=c("darkgrey", "lightyellow")) + # change the colors of the bar plot
+  geom_col(show.legend = FALSE) + 
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(x = "Contribution to sentiment", 
+       y = NULL)
+
+df_bing_species %>%
+  group_by(sentiment) %>%
+  slice_max(n, n = 10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word, fill = sentiment)) + 
+  scale_fill_manual(values=c("darkgrey", "lightyellow")) + # change the colors of the bar plot
+  geom_col(show.legend = FALSE) + 
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(x = "Contribution to sentiment", 
+       y = NULL, 
+       title = paste0("Sentiment Contribute: ", species))
+
+df_bing_focus %>%
+  group_by(sentiment) %>%
+  slice_max(n, n = 10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word, fill = sentiment)) + 
+  scale_fill_manual(values=c("darkgrey", "lightyellow")) + # change the colors of the bar plot
+  geom_col(show.legend = FALSE) + 
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(x = "Contribution to sentiment", 
+       y = NULL, 
+       title = paste0("Sentiment Contribute: ", focus))
 
 # compare the various sentiments to the value orientation
 
