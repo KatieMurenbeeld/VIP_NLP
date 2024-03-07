@@ -54,15 +54,45 @@ df_bing_focus <- tidy_articles %>%
   count(word, sentiment, sort = TRUE) %>%
   ungroup() 
 
+#-----
+
 df_afinn <- tidy_articles %>%
   inner_join(get_sentiments("afinn")) %>%
   count(word, value, sort = TRUE) %>%
   ungroup()
 
+df_afinn_species <- tidy_articles %>%
+  filter(Species %in% species) %>%
+  inner_join(get_sentiments("afinn")) %>%
+  count(word, value, sort = TRUE) %>%
+  ungroup()
+
+df_afinn_focus <- tidy_articles %>%
+  filter(Focus %in% focus) %>%
+  inner_join(get_sentiments("afinn")) %>%
+  count(word, value, sort = TRUE) %>%
+  ungroup()
+
+#----
+
 df_nrc <- tidy_articles %>%
   inner_join(get_sentiments("nrc")) %>%
   count(word, sentiment, sort = TRUE) %>%
   ungroup()
+
+df_nrc_species <- tidy_articles %>%
+  filter(Species %in% species) %>%
+  inner_join(get_sentiments("nrc")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+
+df_nrc_focus <- tidy_articles %>%
+  filter(Focus %in% focus) %>%
+  inner_join(get_sentiments("nrc")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+
+#----
 
 df_afinn_sent <- tidy_sentences %>%
   inner_join(get_sentiments("afinn")) %>%
@@ -73,8 +103,17 @@ df_afinn_sent <- tidy_sentences %>%
   mutate(method = "AFINN") %>%
   ungroup()
 
+df_bing_sent <- tidy_sentences %>%
+  inner_join(get_sentiments("bing")) %>%
+  group_by(doc_id, sentenceID) %>% 
+  summarise(dom_mut = mean(Value_Orientation)) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  group_by(doc_id) %>%
+  mutate(method = "Bing") %>%
+  ungroup()
+
 # Plot the sentiments
-df_bing %>%
+all_sentiment <- df_bing %>%
   group_by(sentiment) %>%
   slice_max(n, n = 10) %>%
   ungroup() %>%
@@ -84,9 +123,14 @@ df_bing %>%
   geom_col(show.legend = FALSE) + 
   facet_wrap(~sentiment, scales = "free_y") +
   labs(x = "Contribution to sentiment", 
-       y = NULL)
+       y = NULL) +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 24),
+        axis.text.y = element_text(size = 24))
 
-df_bing_species %>%
+ggsave(here::here("presentation/all_sentiment.png"), all_sentiment, width = 12, height = 15, dpi = 300)
+
+species_sent <- df_bing_species %>%
   group_by(sentiment) %>%
   slice_max(n, n = 10) %>%
   ungroup() %>%
@@ -97,7 +141,13 @@ df_bing_species %>%
   facet_wrap(~sentiment, scales = "free_y") +
   labs(x = "Contribution to sentiment", 
        y = NULL, 
-       title = paste0("Sentiment Contribute: ", species))
+       title = paste0("Sentiment Contribute: ", species))  +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 24),
+        axis.text.y = element_text(size = 24))
+
+ggsave(here::here(paste0("presentation/", species, "_sentiment.png")), species_sent, width = 12, height = 15, dpi = 300)
+
 
 df_bing_focus %>%
   group_by(sentiment) %>%
@@ -112,7 +162,14 @@ df_bing_focus %>%
        y = NULL, 
        title = paste0("Sentiment Contribute: ", focus))
 
+# make line plots
+
+# compare sentiments to value orientation
+## but are they a one to one comparison? 
+## who assumes that domination is bad and mutualism is good?
+
 # compare the various sentiments to the value orientation
+
 
 
 
