@@ -4,9 +4,9 @@ library(tidytext)
 library(SnowballC)
 library(ggplot2)
 
-# read in the data
-article_codes <- read.csv(file = "data/original/new_article_coding.csv")
-original_articles <- read_csv(here::here("data/processed/02_module_articles_2024-03-06.csv"))
+# Read in the data
+article_codes <- read.csv(file = here::here("data/original/new_article_coding.csv"))
+original_articles <- read.csv(here::here("data/processed/02_module_articles_2024-03-06.csv"))
 
 # Preprocess the data
 articles_text <- original_articles %>%
