@@ -38,7 +38,7 @@ df_bing <- tidy_articles %>%
   count(word, sentiment, sort = TRUE) %>%
   ungroup()
 
-species <- c("Boars")
+species <- c("Bob Cats")
 
 df_bing_species <- tidy_articles %>%
   filter(Species %in% species) %>%
@@ -46,7 +46,7 @@ df_bing_species <- tidy_articles %>%
   count(word, sentiment, sort = TRUE) %>%
   ungroup() 
 
-focus <- c("Policy")
+focus <- c("Practitioner")
 
 df_bing_focus <- tidy_articles %>%
   filter(Focus %in% focus) %>%
