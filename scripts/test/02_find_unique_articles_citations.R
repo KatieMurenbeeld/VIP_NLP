@@ -89,5 +89,10 @@ og_titles <- article_coding %>%
 title_compare <- full_join(titles, og_titles, 
                            by = c("title" = "Title"))
 
-write.csv(title_compare, file = here::here(paste0("data/processed/article_library_compare_", Sys.Date(), ".csv")), row.names = FALSE)
+#write.csv(title_compare, file = here::here(paste0("data/processed/article_library_compare_", Sys.Date(), ".csv")), row.names = FALSE)
+
+test <- left_join(titles, article_coding, 
+                  by = c("title" = "Title"))
+
+
 
