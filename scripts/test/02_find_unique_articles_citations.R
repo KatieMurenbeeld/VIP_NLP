@@ -1,17 +1,18 @@
 library(tidyverse)
 library(stringr)
 
-pq_articles <- read_csv("data/processed/citation_29-02-2024.csv")
-
-articles <- as.data.frame(unique(pq_articles$Title))
+tdm_articles <- read_csv(here::here("data/original/citation.csv/citation.csv"))
+  
+#articles <- as.data.frame(unique(pq_articles$Title))
 
 #---Load in the text files from ProQuest-----
 
-data <- read_file("data/original/ProQuestDocuments-2024-03-05_02.txt")
+pql_articles <- read_file(here::here("data/original/ProQuestDocuments-2024-03-12.txt"))
 
 #Separate the articles  
-new_df <- data.frame(doc_id=character(),
-                     text=character())
+pql_df <- data.frame(doc_id = character(),
+                     title = character(),
+                     text = character())
 
 sep <- "____________________________________________________________"
 number <- 1:84
@@ -19,14 +20,20 @@ doc_num <- paste0("Document ", number, " ")
 
 doc_id <- list()
 text <- list()
+title <- list()
+
+pattern <- paste0("\\s*(.*?)\\s*",sep)
+tmp_text <- regmatches(pql_articles, gregexpr(tmp_pattern, pql_articles))
 
 for (i in doc_num){
   tmp_id <- i
-  tmp_pattern <- paste0(i,"\\s*(.*?)\\s*",sep)
-  tmp_text <- regmatches(data, gregexpr(tmp_pattern, data))
+  tmp_pattern <- paste0("\\s*(.*?)\\s*",sep)
+  tmp_text <- regmatches(pql_articles, gregexpr(tmp_pattern, pql_articles))
+  tmp_title <- str_extract(tmp_text, regex("(?<=Title:).*"))
   doc_id <- tmp_id
   text <- tmp_text
-  new_df[nrow(new_df) + 1,] <- c(doc_id, 
+  pql_df[nrow(pql_df) + 1,] <- c(doc_id,
+                                 title,
                                  text)
 }
 
