@@ -1,5 +1,6 @@
 library(tidyverse)
 library(stringr)
+library(tidytext)
 
 tdm_articles <- read_csv(here::here("data/original/citation.csv/citation.csv"))
   
@@ -40,9 +41,36 @@ for (i in 1:175){
                                  text)
 }
 
-articles <- new_df %>%
-  separate_rows(text, sep = "\r\n\r\n")
+#articles <- new_df %>%
+#  separate_rows(text, sep = "\r\n\r\n")
 
-write.csv(articles, file = here::here(paste0("data/processed/02_module_articles_", Sys.Date(), ".csv")), row.names = FALSE)
+#write.csv(articles, file = here::here(paste0("data/processed/02_module_articles_", Sys.Date(), ".csv")), row.names = FALSE)
 
-                            
+ 
+#----Compare the two datasets----
+
+pql_df$title <- tolower(pql_df$title)
+
+pql_titles <- pql_df %>% 
+  group_by(title) %>% 
+  count(title) %>%
+  ungroup %>%
+  filter(!grepl("bless the beasts", title)) %>%
+  filter(!grepl("a tough way", title))
+
+tdm_articles$Title <- tolower(tdm_articles$Title)
+
+tdm_titles <- tdm_articles %>%
+  group_by(Title) %>%
+  count(Title) %>%
+  ungroup %>%
+  filter(!grepl("bless the beasts", Title)) %>%
+  filter(!grepl("a tough way", Title))
+
+titles <- full_join(pql_titles, tdm_titles, 
+                    by = c("title" = "Title"),
+                    suffix = c("_pql", "_tdm"))
+
+
+
+                           
