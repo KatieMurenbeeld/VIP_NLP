@@ -10,20 +10,22 @@ tdm_articles <- read_csv(here::here("data/original/citation.csv/citation.csv"))
 pql_articles <- read_file(here::here("data/original/ProQuestDocuments-2024-03-12.txt"))
 
 #Separate the articles  
-pql_df <- data.frame(doc_id = character(),
-                     title = character(),
-                     text = character())
+
 
 sep <- "____________________________________________________________"
 number <- 1:175
 doc_num <- paste0("Document ", number, " ")
 
+pattern <- paste0("\\s*(.*?)\\s*",sep)
+full_text <- regmatches(pql_articles, gregexpr(tmp_pattern, pql_articles))
+
+pql_df <- data.frame(doc_id = character(),
+                     title = character(),
+                     text = character())
+
 doc_id <- list()
 text <- list()
 title <- list()
-
-pattern <- paste0("\\s*(.*?)\\s*",sep)
-full_text <- regmatches(pql_articles, gregexpr(tmp_pattern, pql_articles))
 
 for (i in 1:175){
   tmp_id <- paste0("Document ", i)
