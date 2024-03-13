@@ -15,7 +15,7 @@ pql_df <- data.frame(doc_id = character(),
                      text = character())
 
 sep <- "____________________________________________________________"
-number <- 1:84
+number <- 1:175
 doc_num <- paste0("Document ", number, " ")
 
 doc_id <- list()
@@ -23,15 +23,16 @@ text <- list()
 title <- list()
 
 pattern <- paste0("\\s*(.*?)\\s*",sep)
-tmp_text <- regmatches(pql_articles, gregexpr(tmp_pattern, pql_articles))
+full_text <- regmatches(pql_articles, gregexpr(tmp_pattern, pql_articles))
 
-for (i in doc_num){
-  tmp_id <- i
-  tmp_pattern <- paste0("\\s*(.*?)\\s*",sep)
-  tmp_text <- regmatches(pql_articles, gregexpr(tmp_pattern, pql_articles))
-  tmp_title <- str_extract(tmp_text, regex("(?<=Title:).*"))
+for (i in 1:175){
+  tmp_id <- paste0("Document ", i)
+  tmp_text <- full_text[[1]][i+1]
+  tmp_title <- str_extract(tmp_text, regex("(?<=Title: ).*"))
+  text <- str_extract_all(tmp_text, regex("(?<=Full text: ).*"))
   doc_id <- tmp_id
   text <- tmp_text
+  title <- tmp_title
   pql_df[nrow(pql_df) + 1,] <- c(doc_id,
                                  title,
                                  text)
