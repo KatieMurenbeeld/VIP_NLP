@@ -50,6 +50,7 @@ for (i in 1:175){
 #----Compare the two datasets----
 
 pql_df$title <- tolower(pql_df$title)
+pql_df$title <- gsub("[[:punct:]]", "", pql_df$title)
 
 pql_titles <- pql_df %>% 
   group_by(title) %>% 
@@ -59,6 +60,7 @@ pql_titles <- pql_df %>%
   filter(!grepl("a tough way", title))
 
 tdm_articles$Title <- tolower(tdm_articles$Title)
+tdm_articles$Title <- gsub("[[:punct:]]", "", tdm_articles$Title)
 
 tdm_titles <- tdm_articles %>%
   group_by(Title) %>%
@@ -71,6 +73,19 @@ titles <- full_join(pql_titles, tdm_titles,
                     by = c("title" = "Title"),
                     suffix = c("_pql", "_tdm"))
 
+# Load in the coded article csv
+article_coding <- read_csv("data/original/new_article_coding.csv")
+article_coding$Title <- trimws(tolower(article_coding$Title))
+article_coding$Title <- gsub("[[:punct:]]", "", article_coding$Title)
 
+# Create a list of unique article titles
+og_titles <- trimws(unique(article_coding$Title))
 
+og_titles <- article_coding %>%
+  group_by(Title) %>%
+  count(Title) %>%
+  ungroup
+
+title_compare <- full_join(titles, og_titles, 
+                           by = c("title" = "Title"))
                            
