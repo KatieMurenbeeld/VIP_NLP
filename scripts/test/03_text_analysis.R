@@ -14,6 +14,18 @@ original_articles <- read.csv(here::here("data/processed/02_module_articles_2024
 article_codes <- article_codes %>%
   drop_na(Value_Orientation)
   
+length(unique(article_codes$Title))
+
+article_codes %>%
+  filter(Conflict_Type == "Human-Wildlife") %>%
+  count(Focus)
+
+group_mean<- aggregate(x= article_codes$Value_Orientation,
+                       # Specify group indicator
+                       by = list(article_codes$Conflict_Type),      
+                       # Specify function (i.e. mean)
+                       FUN = mean)
+print(group_mean)
 
 article_codes$Species <- str_replace(article_codes$Species, 'Grizzly Bears', 'Grizzly Bear')
 
@@ -27,6 +39,7 @@ n_species <- article_codes %>%
         axis.text.x = element_text(size = 22, angle = 60),
         axis.title.x = element_text(size = 24), 
         axis.text.y = element_text(size = 22)) 
+n_species
 
 ggsave(here::here("presentation/n_article_species.png"), n_species, width = 10, height = 14, dpi = 300)  
 
@@ -48,6 +61,7 @@ n_focus <- article_codes %>%
         axis.text.x = element_text(size = 22, angle = 60),
         axis.title.x = element_text(size = 24), 
         axis.text.y = element_text(size = 22)) 
+n_focus
 
 ggsave(here::here("presentation/n_article_focus.png"), n_focus, width = 10, height = 14, dpi = 300)  
 
@@ -67,7 +81,7 @@ n_conflict <- article_codes %>%
         axis.text.x = element_text(size = 22),
         axis.title.x = element_text(size = 24), 
         axis.text.y = element_text(size = 22)) 
- 
+n_conflict 
 
 ggsave(here::here("presentation/n_article_conflict.png"), n_conflict, width = 10, height = 14, dpi = 300)  
   
@@ -109,6 +123,8 @@ n_article_map <- ggplot() +
   theme(plot.title = element_text(size=12),
         legend.title = element_text(size=10)) +
   theme_bw()
+n_article_map
+
 ggsave(here::here("presentation/n_article_map.png"), n_article_map, width = 14, height = 14, dpi = 300) 
 
 # Text Analysis
