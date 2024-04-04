@@ -8,16 +8,17 @@ library(tigris)
 # Read in the data
 article_codes <- read.csv(file = here::here("data/original/new_article_coding.csv"))
 original_articles <- read.csv(here::here("data/processed/02_module_articles_2024-03-06.csv"))
+text_codes <- read.csv(here::here("data/processed/article_text_codes_2024-04-04.csv"))
 
 # Exploratory Analysis
 
-article_codes <- article_codes %>%
+article_codes <- text_codes %>%
   drop_na(Value_Orientation)
   
-length(unique(article_codes$Title))
+length(unique(text_codes$Title.x))
 
 article_codes %>%
-  filter(Conflict_Type == "Human-Wildlife") %>%
+  filter(Species == "Grizzly Bear" | Species == "Grizzly Bears") %>%
   count(Focus)
 
 group_mean<- aggregate(x= article_codes$Value_Orientation,
