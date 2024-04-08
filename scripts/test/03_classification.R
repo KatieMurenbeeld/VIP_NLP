@@ -103,10 +103,17 @@ dtm_grizz_train <- focus_words_train %>%
 dtm_grizz_test <- focus_words_test %>%
   cast_dtm(Focus, word, n)
 
+# Test naive bayes
+
+# need labels
+grizz_train_labels <- 
+grizz_test_labels <- 
 
 
-
-
+####----Breadcrumb for tomorrow-----
+### re-do the train-test split and make sure to create the label split as well
+### see https://github.com/KatieMurenbeeld/NLP/blob/main/Supervised_Classification.Rmd
+### from 2023!!!!!
 
 
 
