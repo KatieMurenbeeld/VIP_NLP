@@ -7,9 +7,11 @@ library(naivebayes)
 library(recipes)
 library(hardhat)
 library(glmnet)
+library(utiml)
+library(tm)
 
 # Load the cleaned data
-articles_text_clean <- read_csv(here::here("data/processed/grizz_clean_text_2024-04-04.csv"))
+articles_text_clean <- read_csv(here::here("data/processed/grizz_clean_text_2024-04-08.csv"))
 
 ## Clean up multiple-spellings in species names, focus, and conflict type
 articles_text_clean$Conflict_Type <- str_replace(articles_text_clean$Conflict_Type, 'N-W', 'Nature-Wildlife')
@@ -62,8 +64,72 @@ tidy_grizz_train <- tidy_grizz_train %>%
 tidy_grizz_test <- tidy_grizz_test %>%
   select(Focus, Conflict_Type, Value_Orientation, Publication_State, word)
 
+tidy_grizz_train %>%
+  count(Focus, word, sort = TRUE)
+
 tidy_grizz_test %>%
   count(Focus, word, sort = TRUE)
+
+focus_words_train <- tidy_grizz_train %>%
+  count(Focus, word, sort = TRUE)
+
+total_words_train <- focus_words_train %>% 
+  group_by(Focus) %>% 
+  summarize(total = sum(n))  
+focus_words_train <- left_join(focus_words_train, total_words_train)
+
+focus_words_test <- tidy_grizz_test %>%
+  count(Focus, word, sort = TRUE)
+
+total_words_test <- focus_words_test %>% 
+  group_by(Focus) %>% 
+  summarize(total = sum(n))  
+focus_words_test <- left_join(focus_words_test, total_words_test)
+
+focus_tf_idf_train <- focus_words_train %>%
+  bind_tf_idf(word, Focus, n)
+
+focus_tf_idf_test <- focus_words_test %>%
+  bind_tf_idf(word, Focus, n)
+
+focus_tf_idf_test %>%
+  select(-total) %>%
+  arrange(desc(tf_idf))
+
+# create a dtm (sparse data)
+dtm_grizz_train <- focus_words_train %>%
+  cast_dtm(Focus, word, n)
+
+dtm_grizz_test <- focus_words_test %>%
+  cast_dtm(Focus, word, n)
+
+
+
+
+
+
+
+
+
+
+
+# comment
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #---Ignore the below for now-------------------------------------
 # Split the data
