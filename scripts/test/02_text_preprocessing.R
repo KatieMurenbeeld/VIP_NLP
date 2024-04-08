@@ -35,7 +35,7 @@ articles_text$Article_Text <- str_replace(articles_text$Article_Text, "don't", "
 articles_text$Article_Text <- str_replace(articles_text$Article_Text, "it's", "it is")
 
 articles_text <- articles_text %>%
-  select(Publication_State, Focus, Conflict_Type, Value_Orientation, Article_Text)
+  select(Title.x, Publication_State, Focus, Conflict_Type, Value_Orientation, Article_Text)
 
 # save cleaned up data
 write_csv(articles_text, here::here(paste0("data/processed/grizz_clean_text_", Sys.Date(), ".csv")), 
@@ -62,4 +62,4 @@ tidy_articles <- tidy_articles %>%
   anti_join(grizz_stop_words)
 
 tidy_articles <- tidy_articles %>%
-  select(Focus, Conflict_Type, Value_Orientation, Publication_State, word)
+  select(Title, Focus, Conflict_Type, Value_Orientation, Publication_State, word)
