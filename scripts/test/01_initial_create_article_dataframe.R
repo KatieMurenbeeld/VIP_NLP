@@ -25,7 +25,19 @@ article_list_new <- article_codes %>%
 grizz <- article_codes %>%
   filter(Species == "Grizzly Bear" | Species == "Grizzly Bears")
 
-urls <- trimws(unique(grizz$Link))
+beavs <- article_codes %>%
+  filter(Species == "Beaver" | Species == "Beavers")
+
+wolf <- article_codes %>%
+  filter(Species == "Wolves")
+
+boars <- article_codes %>%
+  filter(Species == "Boars")
+
+other <- article_codes %>%
+  filter(Species == "Other")
+
+urls <- trimws(unique(other$Link))
 
 # Set up a user agent so that the website doesn't think you are a robot
 ua <- "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36"
@@ -39,7 +51,7 @@ df_article <- data.frame(Title=character(),
 
 #df_article <- read_csv("data/processed/article_text.csv")
 
-for (url in urls){
+for (url in urls[66:135]){
   link <- url
   page <- GET(link, user_agent(ua))
   page_text <- httr::content(page, as = "text")
@@ -76,7 +88,7 @@ for (url in urls){
 #  select(-tmp)
 
 ## Write df to csv
-write_csv(df_article, here::here(paste0("data/processed/article_text_", Sys.Date(), ".csv")), 
+write_csv(df_article, here::here(paste0("data/processed/article_text_coyote_", Sys.Date(), ".csv")), 
                                         col_names = TRUE, 
                                         append = TRUE)
 
@@ -87,7 +99,7 @@ article_codes$Link <- trimws(article_codes$Link)
 df_text_codes <- full_join(article_codes, df_article, by="Link")
 
 ## Write joined df to csv
-write_csv(df_text_codes, here::here(paste0("data/processed/article_text_codes_", 
+write_csv(df_text_codes, here::here(paste0("data/processed/article_text_codes_coyote_", 
                                            Sys.Date(), ".csv")), 
                                            col_names = TRUE, 
                                            append = TRUE)
