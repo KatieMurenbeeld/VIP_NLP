@@ -17,6 +17,7 @@ articles_text$Species <- str_replace(articles_text$Species, 'Grizzly Bears', 'Gr
 articles_text$Focus <- str_replace(articles_text$Focus, 'Practicioner', 'Practitioner')
 articles_text$Conflict_Type <- str_replace(articles_text$Conflict_Type, 'H-H', 'Human-Human')
 articles_text$Conflict_Type <- str_replace(articles_text$Conflict_Type, 'H-W', 'Human-Wildlife')
+articles_text$Conflict_Type <- str_replace(articles_text$Conflict_Type, 'N-W', 'Nature-Wildlife')
 articles_text$Conflict_Type <- str_replace(articles_text$Conflict_Type, 'Unstated Conflict', 'Unstated')
 
 
