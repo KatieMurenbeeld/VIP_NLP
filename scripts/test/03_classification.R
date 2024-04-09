@@ -9,202 +9,131 @@ library(hardhat)
 library(glmnet)
 library(utiml)
 library(tm)
+library(caret)
+
 
 # Load the cleaned data
-articles_text_clean <- read_csv(here::here("data/processed/grizz_clean_text_2024-04-08.csv"))
+articles_text_clean <- read_csv(here::here("data/processed/clean_text_2024-04-09.csv"))
 
-## Clean up multiple-spellings in species names, focus, and conflict type
-articles_text_clean$Conflict_Type <- str_replace(articles_text_clean$Conflict_Type, 'N-W', 'Nature-Wildlife')
+## Add a document id column
+articles_text_clean$id <- seq.int(nrow(articles_text_clean))
 
 ## A few articles have a bunch of html code at the end so remove that
 ### may want to add this as an if-else to clean up the larger corpus
-articles_text_clean[[5]][15] <- str_extract(articles_text_clean[[5]][15], regex(".+?(?=</div>)"))
+for (i in 1:length(articles_text_clean)) {
+  if (str_detect(articles_text_clean[[6]][i], "</div>") == TRUE) {
+    articles_text_clean[[6]][i] <- str_extract(articles_text_clean[[6]][15], regex(".+?(?=</div>)"))
+  } else {articles_text_clean[[6]][i] <- articles_text_clean[[6]][i]
+  }
+}
 
-# Split the data
-grizz_split <- initial_split(articles_text_clean, strata = Focus)
-
-grizz_train <- training(grizz_split)
-grizz_test <- testing(grizz_split)
-
-# Tokenize and create dtm
-## Tokenize
-tidy_grizz_train <- grizz_train %>%
+# tokenize and create dtm first?
+tidy_text <-  articles_text_clean %>%
   unnest_tokens(word, Article_Text) %>% 
   filter(!grepl('[0-9]', word))  
-
-tidy_grizz_test <- grizz_test %>%
-  unnest_tokens(word, Article_Text) %>% 
-  filter(!grepl('[0-9]', word))  
-
-## Check the most common words
-tidy_grizz_train %>%
-  count(word, sort = TRUE) 
-
-tidy_grizz_test %>%
-  count(word, sort = TRUE)
 
 ## Remove stop words
 ## Create a small data frame of your own stop words for this project 
 data("stop_words")
-grizz_stop_words <- data.frame(c("p", "br", "strong", "targetednews.com",
-                                 "grizzly", "grizzlies", "bears", "bear")) 
-colnames(grizz_stop_words) <-("word")
+wildlife_stop_words <- data.frame(c("p", "br", "strong", "targetednews.com",
+                                 "grizzly", "grizzlies", "bears", "bear", 
+                                 "wolf", "wolves", "coyote", "coyotes", 
+                                 "pigs", "pig", "beaver", "beavers")) 
+colnames(wildlife_stop_words) <-("word")
 
-tidy_grizz_train <- tidy_grizz_train %>%
+tidy_text_stop <- tidy_text %>%
   anti_join(stop_words) %>%
-  anti_join(grizz_stop_words)
+  anti_join(wildlife_stop_words)
 
-tidy_grizz_test <- tidy_grizz_test %>%
-  anti_join(stop_words) %>%
-  anti_join(grizz_stop_words)
+dtm <- tidy_text_stop %>%
+  count(id, word, sort = TRUE) %>%
+  bind_tf_idf(word, id, n) %>%
+  cast_dtm(id, word, tf_idf)
 
-tidy_grizz_train <- tidy_grizz_train %>%
-  select(Focus, Conflict_Type, Value_Orientation, Publication_State, word)
+# Split the data: create training, testing, and labels datasets
+articles_text_clean$Focus <- as.factor(articles_text_clean$Focus)
+articles_text_clean$Conflict_Type <- as.factor(articles_text_clean$Conflict_Type)
+articles_text_clean <- articles_text_clean %>%
+  filter(is.na(Focus) == FALSE)
 
-tidy_grizz_test <- tidy_grizz_test %>%
-  select(Focus, Conflict_Type, Value_Orientation, Publication_State, word)
+trainIndex <- createDataPartition(y = articles_text_clean$id, p = 0.7,list = FALSE)
+testIndex <- articles_text_clean$id[-trainIndex]
 
-tidy_grizz_train %>%
-  count(Focus, word, sort = TRUE)
+set.seed(455)
+data_to_train <- dtm[trainIndex, ] %>% as.matrix() %>% as.data.frame() 
+data_to_test <- dtm[testIndex, ] %>% as.matrix() %>% as.data.frame()
+label_train <- articles_text_clean$Conflict_Type[trainIndex]
+label_test <- articles_text_clean$Conflict_Type[testIndex]
 
-tidy_grizz_test %>%
-  count(Focus, word, sort = TRUE)
+## Classification...here we go!
 
-focus_words_train <- tidy_grizz_train %>%
-  count(Focus, word, sort = TRUE)
-
-total_words_train <- focus_words_train %>% 
-  group_by(Focus) %>% 
-  summarize(total = sum(n))  
-focus_words_train <- left_join(focus_words_train, total_words_train)
-
-focus_words_test <- tidy_grizz_test %>%
-  count(Focus, word, sort = TRUE)
-
-total_words_test <- focus_words_test %>% 
-  group_by(Focus) %>% 
-  summarize(total = sum(n))  
-focus_words_test <- left_join(focus_words_test, total_words_test)
-
-focus_tf_idf_train <- focus_words_train %>%
-  bind_tf_idf(word, Focus, n)
-
-focus_tf_idf_test <- focus_words_test %>%
-  bind_tf_idf(word, Focus, n)
-
-focus_tf_idf_test %>%
-  select(-total) %>%
-  arrange(desc(tf_idf))
-
-# create a dtm (sparse data)
-dtm_grizz_train <- focus_words_train %>%
-  cast_dtm(Focus, word, n)
-
-dtm_grizz_test <- focus_words_test %>%
-  cast_dtm(Focus, word, n)
-
-# Test naive bayes
-
-# need labels
-grizz_train_labels <- 
-grizz_test_labels <- 
-
-
-####----Breadcrumb for tomorrow-----
-### re-do the train-test split and make sure to create the label split as well
-### see https://github.com/KatieMurenbeeld/NLP/blob/main/Supervised_Classification.Rmd
-### from 2023!!!!!
-
-
-
-
-
-
-# comment
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#---Ignore the below for now-------------------------------------
-# Split the data
-grizz_split <- initial_split(articles_text_clean, strata = Focus)
-
-grizz_train <- training(grizz_split)
-grizz_test <- testing(grizz_split)
-
-#---Check the number of cases in each Focus type
-# Remeber articles can have more than one Focus
-grizz_train %>%
-  count(Focus, sort = TRUE) %>%
-  select(n, Focus)
-
-
-#---Create the recipe and workflow--
-# start with the formula expression
-grizz_rec <- 
-  recipe(Focus ~ Article_Text, data = grizz_train)
-
-# next add processing steps
-grizz_rec <- grizz_rec %>%
-  step_tokenize(Article_Text) %>%
-  step_tokenfilter(Article_Text, max_tokens = 1e3) %>%
-  step_tfidf(Article_Text)
-
-#---Build a lasso regularization
-multi_spec <- multinom_reg(penalty = tune(), mixture = 1) %>%
-  set_mode("classification") %>%
-  set_engine("glmnet")
-
-multi_spec
-
-# setup a sparse blueprint, forces data to be processes as sparse data
-sparse_bp <- hardhat::default_formula_blueprint(composition = "dgCMatrix")
-
-# Create the workflow 
-grizz_wf <- workflow() %>%
-  #add_recipe(grizz_rec, blueprint = sparse_bp) %>% # error because the blueprint class doesn't match the required blueprint class for some reason
-  add_recipe(grizz_rec) %>%
-  add_model(multi_spec)
-
-#grizz_sparse_wf <- grizz_wf %>%
-#  update_recipe(grizz_rec, blueprint = sparse_bp)
-
-#---Model Evaluation--
-
-# create 10-fold cross-validation
-
-set.seed(234)
-
-grizz_folds <- vfold_cv(grizz_train)
-grizz_folds
-
-# fit to the resampled data
-smaller_lambda <- grid_regular(penalty(range = c(-5, 0)), levels = 20)
-
-mod_rs <- tune_grid(
-  grizz_wf,
-  grizz_folds,
-  grid = smaller_lambda,
-  control = control_resamples(save_pred = TRUE)
+# KNN
+# 1. Train the model
+knn_model <- train(x = data_to_train, #training data
+                   y = as.factor(label_train), #labeled data
+                   method = "knn", #the algorithm
+                   #trControl = trctrl, #the resampling strategy we will use
+                   tuneGrid = data.frame(k = 2) #the hyperparameter
 )
 
-mod_rs
+# 2. Test the trained model on the test data
+knn_predict <- predict(knn_model, newdata = data_to_test)
+# 3. Check the model performance
+# You can look at a confusion matrix to see how well the model did
+knn_confusion_matrix <- confusionMatrix(knn_predict, label_test, mode = "prec_recall")
+knn_confusion_matrix
 
-mod_rs_metrics <- collect_metrics(mod_rs)
-mod_rs_preditions <- collect_predictions(mod_rs)
+# SVM
+# 1. Train the model on the training data
+svm_model <- caret::train(x = data_to_train,
+                          y = as.factor(label_train),
+                          method = "svmLinear3",
+                          #trControl = trctrl, 
+                          tuneGrid = data.frame(cost = 1, #accounts for over-fitting
+                                                Loss = 2)) #accounts for misclassifications
+# 2. Test the trained model on the test data
+svm_predict <- predict(svm_model, newdata = data_to_test)
+# 3. Check the model performance
+# You can look at a confusion matrix to see how well the model did
+svm_confusion_matrix <- confusionMatrix(svm_predict, label_test, mode = "prec_recall")
+svm_confusion_matrix
+
+# Decision trees
+# 1. Train the model on the training data
+dt_mod <- train(x = data_to_train,
+                y = as.factor(label_train),
+                method = "rpart",
+                #trControl = trctrl
+)
+# 2. Test the trained model on the test data
+dt_predict <- predict(dt_mod, newdata = data_to_test) 
+# 3. Check the model performance
+# You can look at a confusion matrix to see how well the model did
+dt_confusion_matrix <- confusionMatrix(dt_predict, label_test, mode = "prec_recall")
+dt_confusion_matrix
+
+fitControl <- trainControl(## 10-fold CV
+  method = "repeatedcv",
+  number = 10,
+  ## repeated ten times
+  repeats = 10)
+# Random Forests
+# 1. Train the model on the training data
+rf_mod <- train(x = data_to_train,
+                y = as.factor(label_train),
+                method = "ranger",
+                trControl = fitControl,
+                #tuneGrid = data.frame(mtry = floor(sqrt(dim(data_to_train)[2])),
+                #                      splitrule = "extratrees",
+                #                      min.node.size = 1)
+                )
+# 2. Test the trained model on the test data
+rf_predict <- predict(rf_mod, newdata = data_to_test)
+# 3. Check the model performance
+# You can look at a confusion matrix to see how well the model did
+rf_confusion_matrix <- confusionMatrix(rf_predict, label_test, mode = "prec_recall")
+rf_confusion_matrix
+
 
 
 
