@@ -50,7 +50,8 @@ data("stop_words")
 wildlife_stop_words <- data.frame(c("p", "br", "strong", "targetednews.com",
                                  "grizzly", "grizzlies", "bears", "bear", 
                                  "wolf", "wolves", "coyote", "coyotes", 
-                                 "pigs", "pig", "beaver", "beavers")) 
+                                 "pigs", "pig", "beaver", "beavers", 
+                                 "amp")) 
 colnames(wildlife_stop_words) <-("word")
 
 tidy_text_stop <- tidy_text %>%
@@ -173,3 +174,31 @@ tidy_bigram <-  articles_text_clean %>%
   filter(!is.na(bigram)) %>% 
   filter(!grepl('[0-9]', bigram))  
 
+bigrams_separated <- tidy_bigram %>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+bigrams_filtered <- bigrams_separated %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word) %>%
+  filter(!word1 %in% wildlife_stop_words$word) %>%
+  filter(!word2 %in% wildlife_stop_words$word)
+
+# new bigram counts:
+bigram_counts <- bigrams_filtered %>% 
+  count(word1, word2, sort = TRUE)
+
+bigram_counts
+
+bigrams_united <- bigrams_filtered %>%
+  unite(bigram, word1, word2, sep = " ")
+
+dtm_bigram <- bigrams_united %>%
+  count(id, bigram, sort = TRUE) %>%
+  bind_tf_idf(bigram, id, n) %>%
+  cast_dtm(id, bigram, tf_idf)
+
+set.seed(455)
+bigram_to_train <- dtm_bigram[trainIndex, ] %>% as.matrix() %>% as.data.frame() 
+bigram_to_test <- dtm_bigram[testIndex, ] %>% as.matrix() %>% as.data.frame()
+label_train <- articles_text_clean$Focus[trainIndex]
+label_test <- articles_text_clean$Focus[testIndex]
