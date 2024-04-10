@@ -18,6 +18,18 @@ articles_text_clean <- read_csv(here::here("data/processed/clean_text_2024-04-09
 ## Add a document id column
 articles_text_clean$id <- seq.int(nrow(articles_text_clean))
 
+## try out some more data transformation, for Focus, Conflict_type, and
+## Value_Orientation I want these columns to hold the list of codes for 
+## each article. nest() is what I want.
+
+test_df <- articles_text_clean %>%
+  select(Title.x, Focus, Conflict_Type, Article_Text, Value_Orientation) %>%
+  group_by(Title.x) %>%
+  nest("multi_labels" = c(Focus, Conflict_Type, Value_Orientation)) %>%
+  select(Title.x, multi_labels, Article_Text)
+  
+
+
 ## A few articles have a bunch of html code at the end so remove that
 ### may want to add this as an if-else to clean up the larger corpus
 for (i in 1:length(articles_text_clean)) {
@@ -53,6 +65,7 @@ dtm <- tidy_text_stop %>%
 # Split the data: create training, testing, and labels datasets
 articles_text_clean$Focus <- as.factor(articles_text_clean$Focus)
 articles_text_clean$Conflict_Type <- as.factor(articles_text_clean$Conflict_Type)
+articles_text_clean$Value_Orientation <- as.factor(articles_text_clean$Value_Orientation)
 articles_text_clean <- articles_text_clean %>%
   filter(is.na(Focus) == FALSE)
 
@@ -62,8 +75,8 @@ testIndex <- articles_text_clean$id[-trainIndex]
 set.seed(455)
 data_to_train <- dtm[trainIndex, ] %>% as.matrix() %>% as.data.frame() 
 data_to_test <- dtm[testIndex, ] %>% as.matrix() %>% as.data.frame()
-label_train <- articles_text_clean$Conflict_Type[trainIndex]
-label_test <- articles_text_clean$Conflict_Type[testIndex]
+label_train <- articles_text_clean$Value_Orientation[trainIndex]
+label_test <- articles_text_clean$Value_Orientation[testIndex]
 
 ## Classification...here we go!
 
@@ -72,8 +85,8 @@ label_test <- articles_text_clean$Conflict_Type[testIndex]
 knn_model <- train(x = data_to_train, #training data
                    y = as.factor(label_train), #labeled data
                    method = "knn", #the algorithm
-                   #trControl = trctrl, #the resampling strategy we will use
-                   tuneGrid = data.frame(k = 2) #the hyperparameter
+                   trControl = fitControl, #the resampling strategy we will use
+                   #tuneGrid = data.frame(k = 2) #the hyperparameter
 )
 
 # 2. Test the trained model on the test data
@@ -127,6 +140,9 @@ rf_mod <- train(x = data_to_train,
                 #                      splitrule = "extratrees",
                 #                      min.node.size = 1)
                 )
+
+rf_mod
+
 # 2. Test the trained model on the test data
 rf_predict <- predict(rf_mod, newdata = data_to_test)
 # 3. Check the model performance
@@ -134,7 +150,20 @@ rf_predict <- predict(rf_mod, newdata = data_to_test)
 rf_confusion_matrix <- confusionMatrix(rf_predict, label_test, mode = "prec_recall")
 rf_confusion_matrix
 
+# Naive Bayes
+library(e1071)
 
-
+# 1. Train the model on the training data
+nb_mod = train(x = data_to_train,
+               y = as.factor(label_train),
+               mthos = 'nb',
+               trControl=trainControl(method='cv',number=10)
+               )
+# 2. Test the trained model on the test data
+nb_predict <- predict(nb_mod, newdata = data_to_test)
+# 3. Check the model performance
+# You can look at a confusion matrix to see how well the model did
+nb_confusion_matrix <- confusionMatrix(nb_predict, label_test, mode = "prec_recall")
+nb_confusion_matrix
 
 
