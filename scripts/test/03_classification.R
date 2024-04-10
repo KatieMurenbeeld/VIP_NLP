@@ -75,8 +75,8 @@ testIndex <- articles_text_clean$id[-trainIndex]
 set.seed(455)
 data_to_train <- dtm[trainIndex, ] %>% as.matrix() %>% as.data.frame() 
 data_to_test <- dtm[testIndex, ] %>% as.matrix() %>% as.data.frame()
-label_train <- articles_text_clean$Value_Orientation[trainIndex]
-label_test <- articles_text_clean$Value_Orientation[testIndex]
+label_train <- articles_text_clean$Focus[trainIndex]
+label_test <- articles_text_clean$Focus[testIndex]
 
 ## Classification...here we go!
 
@@ -166,4 +166,10 @@ nb_predict <- predict(nb_mod, newdata = data_to_test)
 nb_confusion_matrix <- confusionMatrix(nb_predict, label_test, mode = "prec_recall")
 nb_confusion_matrix
 
+#---Would these models work better with bi- or tri-grams?----
+
+tidy_bigram <-  articles_text_clean %>%
+  unnest_tokens(bigram, Article_Text, token = "ngrams", n = 2) %>%
+  filter(!is.na(bigram)) %>% 
+  filter(!grepl('[0-9]', bigram))  
 
