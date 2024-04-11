@@ -1,0 +1,234 @@
+---
+title: "Classification Module"
+author: "Kathryn Murenbeeld"
+format: html
+editor: visual
+---
+
+## Supervised Machine Learning for Text Classification
+
+Overall Steps:
+
+1.  **Feature Selection (or Extraction)**
+
+2.  Dimensionality Reduction
+
+3.  **Classification**
+
+4.  **Model Evaluation**
+
+Machine Learning Process:
+
+1.  Preprocess data: need a labeled dataset and the dataset with the features 
+
+2.  Split the datasets into training and testing datasets
+
+3.  “Train” the classification model on the training dataset
+
+4.  “Test” the trained model on the testing dataset
+
+5.  **Model Evaluation**
+
+6.  Use model to classify new documents
+
+[![General workflow for supervised machine learning models](classification_module/grid_search_workflow.png)](https://scikit-learn.org/stable/modules/cross_validation.html)
+
+## Feature Selection
+
+Features = predictors or independent variables
+
+Texts and documents are unstructured data
+
+Text preprocessing (data cleaning), tokenization, removing punctuation, removing stop words, stemming, etc., all help to structure the data
+
+Once cleaned, we can “extract features” from the data
+
+Common features to extract are:
+
+-   Term frequency (word weighting)
+
+-   **Tf-idf (word weighting)**
+
+-   Word to vectors (word embedding)
+
+-   Global Vectors for word representation (word embedding)
+
+## Classification Techniques
+
+Lots of techniques!
+
+-   **K-Nearest Neighbors**
+
+-   **Support Vector Machines**
+
+-   **Decision Trees**
+
+-   **Random Forests**
+
+-   **Naive Bayes Classifier**
+
+-   Deep Learning (e.g. Neural Networks)
+
+## Tuning Parameters
+
+Each method has a different set of parameters that can be "tuned" or optimized while training our classification models.
+
+The R package used in these examples allows for tuning while training. In order to tune parameters we need to resample our data. Here I use a 10-fold leave-one-out cross validation. Then we try several different parameter values and pick the values that provide the most accuracy (or some other error metric).
+
+[![Example of k-fold leave-one-out cross validation for parameter tuning.](classification_module/grid_search_cross_validation.png)](https://scikit-learn.org/stable/modules/cross_validation.html)
+
+## Load the Data
+
+For this module I have downloaded the coded Newsbank articles for bears, beavers, boars, coyotes, alligators, and wolves (no bobcats). I created a data frame with the article title, publication state, focus, conflict type, value orientation, and article text.
+
+```{r}
+#| label: load-packages
+#| include: False
+
+library(tidyverse)
+library(tidymodels)
+library(tidytext)
+library(utiml)
+library(tm)
+library(caret)
+```
+
+```{r}
+
+#| label: load-data
+
+articles_text_clean <- read_csv(here::here("data/processed/clean_text_2024-04-09.csv"))
+
+
+```
+
+To prepare the data:
+
+-   Add an id column (will need this to split the data)
+
+-   Try to remove any remaining html strings (I will need to use an html parser in the future when downloading the articles)
+
+-   "Tokenize" the data - here will be unigrams and bigrams
+
+    -   during the tokenization process using the tidytext package everything made lower case and numbers are removed
+
+-   Remove "stop words" which are common words that are unlikely to impact the text analysis and classification model. Create a custom list as well.
+
+```{r}
+# Prepare the data
+
+## Add the id column
+articles_text_clean$id <- seq.int(nrow(articles_text_clean))
+
+## Clean up remaining html code
+cleanFun <- function(htmlString) {
+  return(gsub("<.*?>", "", htmlString))
+}
+
+cleanFun2 <- function(htmlString) {
+  return(gsub(">.*?</", "", htmlString))
+}
+
+for (i in 1:length(articles_text_clean)) {
+  articles_text_clean[[6]][i] <- cleanFun(articles_text_clean[[6]][i])
+  articles_text_clean[[6]][i] <- cleanFun2(articles_text_clean[[6]][i])
+}
+
+
+## tokenize the data to create a tidy data frame
+tidy_text <-  articles_text_clean %>%
+  unnest_tokens(word, Article_Text) %>% 
+  filter(!grepl('[0-9]', word))  
+
+## remove stop words
+## Create a small data frame of your own stop words for this project 
+data("stop_words")
+wildlife_stop_words <- data.frame(c("p", "br", "strong", "targetednews.com",
+                                 "grizzly", "grizzlies", "bears", "bear", 
+                                 "wolf", "wolves", "coyote", "coyotes", 
+                                 "pigs", "pig", "beaver", "beavers", 
+                                 "amp", "div", "class", "span", "href")) 
+colnames(wildlife_stop_words) <-("word")
+
+tidy_text_stop <- tidy_text %>%
+  anti_join(stop_words) %>%
+  anti_join(wildlife_stop_words)
+```
+
+In order for the classification models to work the labels must be made into factors.
+
+```{r}
+# make labels factors
+articles_text_clean$Focus <- as.factor(articles_text_clean$Focus)
+articles_text_clean$Conflict_Type <- as.factor(articles_text_clean$Conflict_Type)
+articles_text_clean$Value_Orientation <- as.factor(articles_text_clean$Value_Orientation)
+articles_text_clean <- articles_text_clean %>%
+  filter(is.na(Focus) == FALSE)
+```
+
+Once the data is cleaned and a tidy data frame constructed, then create a document term matrix (dtm). The dtm will contain our feature of interest, the term frequency - inverse document frequency (tf-idf).
+
+$idf(term) = ln(\frac{n_{documents}} {n_{documents containing term}})$
+
+> "The tf-idf is a measure of how important a word is to a document in a collection of (or corpus) of documents, for example, to one novel in a collection of novels or to one website in a collection of websites." - Julian Silge & David Robinson *Text Mining with R: A tidy approach*
+
+```{r}
+# Create the dtm
+
+dtm <- tidy_text_stop %>%
+  count(id, word, sort = TRUE) %>%
+  bind_tf_idf(word, id, n) %>%
+  cast_dtm(id, word, tf_idf)
+```
+
+We will repeat the process for bigrams.
+
+```{r}
+# bigram tidy data frame and dtm
+tidy_bigram <-  articles_text_clean %>%
+  unnest_tokens(bigram, Article_Text, token = "ngrams", n = 2) %>%
+  filter(!is.na(bigram)) %>% 
+  filter(!grepl('[0-9]', bigram))  
+
+bigrams_separated <- tidy_bigram %>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+bigrams_filtered <- bigrams_separated %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word) %>%
+  filter(!word1 %in% wildlife_stop_words$word) %>%
+  filter(!word2 %in% wildlife_stop_words$word)
+
+# new bigram counts:
+bigram_counts <- bigrams_filtered %>% 
+  count(word1, word2, sort = TRUE)
+
+bigram_counts
+
+bigrams_united <- bigrams_filtered %>%
+  unite(bigram, word1, word2, sep = " ")
+
+dtm_bigram <- bigrams_united %>%
+  count(id, bigram, sort = TRUE) %>%
+  bind_tf_idf(bigram, id, n) %>%
+  cast_dtm(id, bigram, tf_idf)
+```
+
+::: {#Supervised Classification}
+:::
+
+```{r}
+# classification: split data and make labels
+```
+
+hjfhsjdfhjks
+
+```{r}
+# train text and bigram knn for each label type
+```
+
+dfhjksdfhjksd
+
+```{r}
+# predict and compare confusion matrix
+```
