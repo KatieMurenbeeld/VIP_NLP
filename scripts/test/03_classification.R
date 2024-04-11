@@ -92,7 +92,8 @@ knn_model <- train(x = data_to_train, #training data
                    y = as.factor(label_train), #labeled data
                    method = "knn", #the algorithm
                    trControl = fitControl, #the resampling strategy we will use
-                   #tuneGrid = data.frame(k = 2) #the hyperparameter
+                   metric = "F1",
+                   #tuneGrid = data.frame(k = 2) #the hyperparameter or param-tuning
 )
 
 # 2. Test the trained model on the test data
@@ -134,6 +135,7 @@ dt_confusion_matrix
 fitControl <- trainControl(## 10-fold CV
   method = "repeatedcv",
   number = 10,
+  summaryFunction = 
   ## repeated ten times
   repeats = 10)
 # Random Forests
