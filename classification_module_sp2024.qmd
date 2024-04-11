@@ -181,7 +181,7 @@ tidy_text_stop %>%
 
 ```{r}
 focus_words <- tidy_text_stop %>%
-  count(Focus, word, sort = TRUE)
+  count(Focus, word)
 
 total_words <- focus_words %>% 
   group_by(Focus) %>% 
@@ -190,11 +190,34 @@ total_words <- focus_words %>%
 focus_words <- left_join(focus_words, total_words)
 
 focus_words %>%
+  filter(Focus == "People") %>%
+  filter(n > 175) %>%
+  ggplot(aes(n, word)) +
+  geom_col(fill = "lightblue", alpha = 0.8) +
+  theme_bw() +
+  labs(y = NULL)
+
+focus_words %>%
+  filter(Focus == "Wildlife") %>%
   filter(n > 175) %>%
   ggplot(aes(n, word)) +
   geom_col() +
-  labs(y = NULL) + 
-  facet_wrap(~Focus)
+  labs(y = NULL)
+
+focus_words %>%
+  filter(Focus == "Policy") %>%
+  filter(n > 175) %>%
+  ggplot(aes(n, word)) +
+  geom_col(fill = "orange", alpha = 0.8) +
+  theme_bw() +
+  labs(y = NULL)
+
+focus_words %>%
+  filter(Focus == "Practitioner") %>%
+  filter(n > 175) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL)
 ```
 
 ::: callout-note
@@ -263,9 +286,7 @@ dtm_bigram <- bigrams_united %>%
   cast_dtm(id, bigram, tf_idf)
 ```
 
-::: {#Supervised Classification}
-Words
-:::
+::: {#Supervised Classification} Words :::
 
 ## Supervised Classification
 
@@ -374,7 +395,7 @@ We use a confusion matrix to determine how well a model predicted the labels.
 
 From the confusion matrix one can calculate
 
--   $accuracy  = \frac{TP + TN} {TP + TN + FP + FN}$ the ratio of correctly classified items to all items
+-   $accuracy = \frac{TP + TN} {TP + TN + FP + FN}$ the ratio of correctly classified items to all items
 
 -   $precision = \frac{TP} {TP + FP}$ the ratio of items correctly identified as a specific class to all items predicted to be that specific class
 
