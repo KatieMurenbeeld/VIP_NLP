@@ -59,13 +59,13 @@ Lots of techniques!
 
 -   **K-Nearest Neighbors**
 
--   **Support Vector Machines**
+-   Support Vector Machines
 
--   **Decision Trees**
+-   Decision Trees
 
--   **Random Forests**
+-   Random Forests
 
--   **Naive Bayes Classifier**
+-   Naive Bayes Classifier
 
 -   Deep Learning (e.g. Neural Networks)
 
@@ -91,6 +91,7 @@ library(tidytext)
 library(utiml)
 library(tm)
 library(caret)
+library(e1071)
 ```
 
 ```{r}
@@ -166,6 +167,54 @@ articles_text_clean <- articles_text_clean %>%
   filter(is.na(Focus) == FALSE)
 ```
 
+### Basic Text Analysis
+
+```{r}
+tidy_text_stop %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 600) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL)
+```
+
+```{r}
+focus_words <- tidy_text_stop %>%
+  count(Focus, word, sort = TRUE)
+
+total_words <- focus_words %>% 
+  group_by(Focus) %>% 
+  summarize(total = sum(n))
+
+focus_words <- left_join(focus_words, total_words)
+
+focus_words %>%
+  filter(n > 175) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL) + 
+  facet_wrap(~Focus)
+```
+
+::: callout-note
+We may want to add "wildlife" to the stop words list.
+:::
+
+```{r}
+wildlife_stop_words <- data.frame(c("p", "br", "strong", "targetednews.com",
+                                 "grizzly", "grizzlies", "bears", "bear", 
+                                 "wolf", "wolves", "coyote", "coyotes", 
+                                 "pigs", "pig", "beaver", "beavers", 
+                                 "amp", "div", "class", "span", "href", 
+                                 "wildlife")) 
+colnames(wildlife_stop_words) <-("word")
+
+tidy_text_stop <- tidy_text %>%
+  anti_join(stop_words) %>%
+  anti_join(wildlife_stop_words)
+```
+
 Once the data is cleaned and a tidy data frame constructed, then create a document term matrix (dtm). The dtm will contain our feature of interest, the term frequency - inverse document frequency (tf-idf).
 
 $idf(term) = ln(\frac{n_{documents}} {n_{documents containing term}})$
@@ -215,20 +264,122 @@ dtm_bigram <- bigrams_united %>%
 ```
 
 ::: {#Supervised Classification}
+Words
 :::
 
+## Supervised Classification
+
+### Split the data into the training and testing sets
+
 ```{r}
+
 # classification: split data and make labels
+
+## Create a training index using the id
+trainIndex <- createDataPartition(y = articles_text_clean$id, p = 0.7,list = FALSE)
+testIndex <- articles_text_clean$id[-trainIndex]
+
+set.seed(455)
+data_to_train <- dtm[trainIndex, ] %>% as.matrix() %>% as.data.frame() 
+data_to_test <- dtm[testIndex, ] %>% as.matrix() %>% as.data.frame()
+label_train <- articles_text_clean$Focus[trainIndex]
+label_test <- articles_text_clean$Focus[testIndex]
+
+set.seed(455)
+bigram_to_train <- dtm_bigram[trainIndex, ] %>% as.matrix() %>% as.data.frame() 
+bigram_to_test <- dtm_bigram[-trainIndex, ] %>% as.matrix() %>% as.data.frame()
+bigram_label_train <- articles_text_clean$Focus[trainIndex]
+bigram_label_test <- articles_text_clean$Focus[testIndex]
 ```
 
-hjfhsjdfhjks
+### KNN: K-nearest neighbors
+
+Basic idea: You are trying to classify document **X**
+
+by using parameter *k* to define the size of the "neighborhood" and
+
+the most common class of each neighbor in the neighborhood will be used to label the unknown document.
+
+![](classification_module/knn.png)
+
+Advantages:
+
+-   Non-parametric 
+
+-   Can easily handle multi-class cases
+
+-   Relatively easy to understand and implement
+
+Limitations:
+
+-   Can be computationally expensive
+
+-   Very sensitive to k
+
+-   Sensitive to irrelevant features
+
+```{r}
+# fit control (resampling and cross validation for parameter tuning)
+
+fitControl <- trainControl(## 10-fold CV
+  method = "repeatedcv",
+  number = 10,
+  ## repeated ten times
+  repeats = 10)
+```
 
 ```{r}
 # train text and bigram knn for each label type
+# KNN
+# 1. Train the model
+knn_model_uni <- train(x = data_to_train, #training data
+                   y = as.factor(label_train), #labeled data
+                   method = "knn", #the algorithm
+                   trControl = fitControl, #the resampling strategy we will use
+                   #tuneGrid = data.frame(k = 2) #the hyperparameter
+)
+
+knn_model_bi <- train(x = bigram_to_train, #training data
+                   y = as.factor(bigram_label_train), #labeled data
+                   method = "knn", #the algorithm
+                   trControl = fitControl, #the resampling strategy we will use
+                   #tuneGrid = data.frame(k = 2) #the hyperparameter
+)
+
+knn_model_uni
+knn_model_bi
 ```
 
-dfhjksdfhjksd
+The model print out describes which metric was used to pick the parameter value and the parameter value chosen.
 
 ```{r}
-# predict and compare confusion matrix
+# 2. Test the trained model on the test data
+knn_predict_uni <- predict(knn_model_uni, newdata = data_to_test)
+knn_predict_bi <- predict(knn_model_bi, newdata = bigram_to_test)
+# 3. Check the model performance
+# You can look at a confusion matrix to see how well the model did
+knn_cm_uni <- confusionMatrix(knn_predict_uni, label_test, mode = "prec_recall")
+knn_cm_bi <- confusionMatrix(knn_predict_bi, bigram_label_test, mode = "prec_recall")
+knn_cm_uni
+knn_cm_bi
 ```
+
+As you can see, even though the accuracy was lower for unigrams than for bigrams, the bigrams consistently missclassified the Focus of articles as Wildlife.
+
+## Model Evaluation
+
+We use a confusion matrix to determine how well a model predicted the labels.
+
+![](classification_module/confusion_matrix.png)
+
+From the confusion matrix one can calculate
+
+-   $accuracy  = \frac{TP + TN} {TP + TN + FP + FN}$ the ratio of correctly classified items to all items
+
+-   $precision = \frac{TP} {TP + FP}$ the ratio of items correctly identified as a specific class to all items predicted to be that specific class
+
+-   $recall = \frac{TP} {TP + FN}$ the ratio of items correctly identified as a specific class to all items of that specific class
+
+-   $F1 score = \frac{2 * precision * recall} {precision + recall}$
+
+## 
