@@ -30,13 +30,18 @@ test_df <- articles_text_clean %>%
   
 
 
-## A few articles have a bunch of html code at the end so remove that
-### may want to add this as an if-else to clean up the larger corpus
+## Clean up remaining html code
+cleanFun <- function(htmlString) {
+  return(gsub("<.*?>", "", htmlString))
+}
+
+cleanFun2 <- function(htmlString) {
+  return(gsub(">.*?</", "", htmlString))
+}
+
 for (i in 1:length(articles_text_clean)) {
-  if (str_detect(articles_text_clean[[6]][i], "</div>") == TRUE) {
-    articles_text_clean[[6]][i] <- str_extract(articles_text_clean[[6]][15], regex(".+?(?=</div>)"))
-  } else {articles_text_clean[[6]][i] <- articles_text_clean[[6]][i]
-  }
+  articles_text_clean[[6]][i] <- cleanFun(articles_text_clean[[6]][i])
+  articles_text_clean[[6]][i] <- cleanFun2(articles_text_clean[[6]][i])
 }
 
 # tokenize and create dtm first?
@@ -51,7 +56,7 @@ wildlife_stop_words <- data.frame(c("p", "br", "strong", "targetednews.com",
                                  "grizzly", "grizzlies", "bears", "bear", 
                                  "wolf", "wolves", "coyote", "coyotes", 
                                  "pigs", "pig", "beaver", "beavers", 
-                                 "amp")) 
+                                 "amp", "div", "class", "span", "href")) 
 colnames(wildlife_stop_words) <-("word")
 
 tidy_text_stop <- tidy_text %>%
