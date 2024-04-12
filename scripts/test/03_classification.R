@@ -44,6 +44,15 @@ for (i in 1:length(articles_text_clean)) {
   articles_text_clean[[6]][i] <- cleanFun2(articles_text_clean[[6]][i])
 }
 
+# Create simplified value_orientation
+articles_text_clean$value_simple <- as.factor(articles_text_clean$Value_Orientation)
+articles_text_clean=within(articles_text_clean,{
+  value_simple=NA
+  value_simple[Value_Orientation == "1" | Value_Orientation == "2"] = "Mutualistic"
+  value_simple[Value_Orientation == "3" | Value_Orientation == "4" | Value_Orientation == "5"] = "Neutral"
+  value_simple[Value_Orientation == "6" | Value_Orientation == "7"] = "Domination"
+})
+
 # tokenize and create dtm first?
 tidy_text <-  articles_text_clean %>%
   unnest_tokens(word, Article_Text) %>% 
@@ -56,7 +65,9 @@ wildlife_stop_words <- data.frame(c("p", "br", "strong", "targetednews.com",
                                  "grizzly", "grizzlies", "bears", "bear", 
                                  "wolf", "wolves", "coyote", "coyotes", 
                                  "pigs", "pig", "beaver", "beavers", 
-                                 "amp", "div", "class", "span", "href")) 
+                                 "amp", "div", "class", "span", "href",
+                                 "wildlife", "wild", "fish", "animal",
+                                 "animals", "species")) 
 colnames(wildlife_stop_words) <-("word")
 
 tidy_text_stop <- tidy_text %>%
@@ -68,10 +79,13 @@ dtm <- tidy_text_stop %>%
   bind_tf_idf(word, id, n) %>%
   cast_dtm(id, word, tf_idf)
 
+
+
 # Split the data: create training, testing, and labels datasets
 articles_text_clean$Focus <- as.factor(articles_text_clean$Focus)
 articles_text_clean$Conflict_Type <- as.factor(articles_text_clean$Conflict_Type)
 articles_text_clean$Value_Orientation <- as.factor(articles_text_clean$Value_Orientation)
+articles_text_clean$value_simple <- as.factor(articles_text_clean$value_simple)
 articles_text_clean <- articles_text_clean %>%
   filter(is.na(Focus) == FALSE)
 
@@ -81,10 +95,27 @@ testIndex <- articles_text_clean$id[-trainIndex]
 set.seed(455)
 data_to_train <- dtm[trainIndex, ] %>% as.matrix() %>% as.data.frame() 
 data_to_test <- dtm[testIndex, ] %>% as.matrix() %>% as.data.frame()
-label_train <- articles_text_clean$Focus[trainIndex]
-label_test <- articles_text_clean$Focus[testIndex]
+label_train <- articles_text_clean$value_simple[trainIndex]
+label_test <- articles_text_clean$value_simple[testIndex]
+
+## Quick look at common words in value_simple
+tidy_text_stop %>%
+  group_by(value_simple) %>%
+  count(word) %>%
+  filter(n > 150) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL) + 
+  facet_wrap(~value_simple)
+
 
 ## Classification...here we go!
+fitControl <- trainControl(## 10-fold CV
+  method = "repeatedcv",
+  number = 10,
+  #summaryFunction = ,
+    ## repeated ten times
+    repeats = 10)
 
 # KNN
 # 1. Train the model
@@ -92,7 +123,7 @@ knn_model <- train(x = data_to_train, #training data
                    y = as.factor(label_train), #labeled data
                    method = "knn", #the algorithm
                    trControl = fitControl, #the resampling strategy we will use
-                   metric = "F1",
+                   metric = "Kappa",
                    #tuneGrid = data.frame(k = 2) #the hyperparameter or param-tuning
 )
 
@@ -132,12 +163,7 @@ dt_predict <- predict(dt_mod, newdata = data_to_test)
 dt_confusion_matrix <- confusionMatrix(dt_predict, label_test, mode = "prec_recall")
 dt_confusion_matrix
 
-fitControl <- trainControl(## 10-fold CV
-  method = "repeatedcv",
-  number = 10,
-  summaryFunction = 
-  ## repeated ten times
-  repeats = 10)
+
 # Random Forests
 # 1. Train the model on the training data
 rf_mod <- train(x = data_to_train,
