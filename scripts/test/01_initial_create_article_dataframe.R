@@ -53,7 +53,7 @@ df_article <- data.frame(Title = character(),
 
 #df_article <- read_csv("data/processed/article_text.csv")
 
-for (url in urls[5:10]){
+for (url in urls[5:7]){
   link <- url
   page <- GET(link, user_agent(ua))
   page_text <- read_html(page) 
@@ -77,6 +77,9 @@ for (url in urls[5:10]){
   article_text <- article_text_all[9]
   if(length(article_text) == 0){
     article_text <- "pdf of actual newspaper"
+  } else{article_text <- article_text}
+  if(article_text == article_title){
+    article_text <- article_text_all[10]
   } else{article_text <- article_text}
   df_article[nrow(df_article) + 1,] <- c(article_title, 
                                          author, 
@@ -105,4 +108,7 @@ write_csv(df_text_codes, here::here(paste0("data/processed/article_text_codes_co
                                            append = TRUE)
 
 
-
+### testing, not all articles have the same number of "p" elements
+link <- urls[5]
+page <- GET(link, user_agent(ua))
+page_text <- read_html(page) 
