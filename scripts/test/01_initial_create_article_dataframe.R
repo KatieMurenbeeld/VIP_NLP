@@ -15,8 +15,8 @@ article_list_prev <- article_list_prev %>%
   select(X, Link, ID)
 
 ## Get new urls from article_codes
-article_list_new <- article_codes %>%
-  select(X, Link, ID)
+#article_list_new <- article_codes %>%
+#  select(X, Link, ID)
 
 # Create list of article urls
 ## need to trim the leading and trailing white spaces
@@ -38,7 +38,7 @@ other <- article_codes %>%
   filter(Species == "Other")
 
 species <- "grizzly_bears"
-urls <- trimws(unique(grizz$Link))
+urls <- trimws(unique(beavs$Link))
 
 # Set up a user agent so that the website doesn't think you are a robot
 ua <- "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36"
@@ -53,13 +53,16 @@ df_article <- data.frame(Title = character(),
 
 #df_article <- read_csv("data/processed/article_text.csv")
 
-for (url in urls[5:7]){
+for (url in urls){
   link <- url
   page <- GET(link, user_agent(ua))
   page_text <- read_html(page) 
   article_title <- page_text %>% html_element("h1") %>% html_text2()
+  article_text_all <- page_text %>% html_elements("p") %>% html_text2()
   if(length(article_title) == 0){
     article_title <- "none given"
+  } else if (article_title == ""){
+    article_title <- article_text_all[9]
   } else{article_title <- article_title}
   author <- page_text %>% html_nodes("span.author-byline") %>% html_text2()
   if(length(author) == 0){
@@ -73,7 +76,6 @@ for (url in urls[5:7]){
   if(length(source) == 0){
     source <- "none given"
   } else{source <- source}
-  article_text_all <- page_text %>% html_elements("p") %>% html_text2()
   article_text <- article_text_all[9]
   if(length(article_text) == 0){
     article_text <- "pdf of actual newspaper"
@@ -99,16 +101,19 @@ write_csv(df_article, here::here(paste0("data/processed/article_text_", species,
 ## Join df_article to new_article_codes_id.csv
 ## Trim whitespace from links
 article_codes$Link <- trimws(article_codes$Link)
-df_text_codes <- full_join(article_codes, df_article, by="Link")
+df_text_codes <- left_join(df_article, article_codes, by="Link")
 
 ## Write joined df to csv
-write_csv(df_text_codes, here::here(paste0("data/processed/article_text_codes_coyote_", 
+write_csv(df_text_codes, here::here(paste0("data/processed/article_text_codes_beavers_", 
                                            Sys.Date(), ".csv")), 
                                            col_names = TRUE, 
                                            append = TRUE)
 
 
 ### testing, not all articles have the same number of "p" elements
-link <- urls[5]
+link <- urls[6]
 page <- GET(link, user_agent(ua))
 page_text <- read_html(page) 
+page_text %>% html_element("h1") %>% html_text2()
+page_text %>% html_nodes("span.author-byline") %>% html_text2()
+page_text %>% html_elements("p") %>% html_text2()
