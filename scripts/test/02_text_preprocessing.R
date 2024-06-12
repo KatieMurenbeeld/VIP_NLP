@@ -12,7 +12,7 @@ text_grizz <- read.csv(here::here("data/processed/article_text_2024-04-04.csv"))
 text_coyote <- read.csv(here::here("data/processed/article_text_coyote_2024-04-08.csv"))
 text_boars <- read.csv(here::here("data/processed/article_text_boars_2024-04-08.csv"))
 text_wolf <- read.csv(here::here("data/processed/article_text_wolf_2024-04-08.csv"))
-text_beavs <- read.csv(here::here("data/processed/article_text_beavs_2024-04-08.csv"))
+text_beavs <- read.csv(here::here("data/processed/article_text_codes_beavers_2024-06-12.csv"))
 
 text_all <- rbind(text_grizz, text_beavs, text_boars, text_coyote, text_wolf)
 
