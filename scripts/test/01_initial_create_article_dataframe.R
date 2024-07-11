@@ -16,7 +16,7 @@ article_list <- article_list %>%
 
 # Create list of article urls
 ## need to trim the leading and trailing white spaces
-## in future only want newly coded articles
+## in future only want newly coded articles, could make a list and then use -%in%
 urls <- trimws(unique(article_list$Link))
 
 # Set up a user agent so that the website doesn't think you are a robot
@@ -33,7 +33,7 @@ df_article <- data.frame(Title = character(),
 # once df is created, append any new articles
 #df_article <- read_csv("data/processed/article_text.csv")
 
-for (url in urls[13]){
+for (url in urls[701:879]){
   link <- url
   page <- GET(link, user_agent(ua))
   page_text <- read_html(page) 
