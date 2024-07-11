@@ -10,35 +10,14 @@ options(
 
 # Load the new_article_coding_ids.csv
 article_codes <- read.csv(file = "data/original/new_article_coding.csv")
-article_list_prev <- read.csv(file = "data/processed/article_list_07-06-2024-1430.csv") 
-article_list_prev <- article_list_prev %>% 
+article_list<- read.csv(file = "data/processed/article_list_11-07-2024-1012.csv") 
+article_list <- article_list %>% 
   select(X, Link, ID)
-
-## Get new urls from article_codes
-#article_list_new <- article_codes %>%
-#  select(X, Link, ID)
 
 # Create list of article urls
 ## need to trim the leading and trailing white spaces
-#article_links <- anti_join(article_list_new, article_list_prev, by="ID")
-#urls <- trimws(unique(article_links$Link))
-grizz <- article_codes %>%
-  filter(Species == "Grizzly Bear" | Species == "Grizzly Bears")
-
-beavs <- article_codes %>%
-  filter(Species == "Beaver" | Species == "Beavers")
-
-wolf <- article_codes %>%
-  filter(Species == "Wolves")
-
-boars <- article_codes %>%
-  filter(Species == "Boars")
-
-other <- article_codes %>%
-  filter(Species == "Other")
-
-species <- "grizzly_bears"
-urls <- trimws(unique(beavs$Link))
+## in future only want newly coded articles
+urls <- trimws(unique(article_list$Link))
 
 # Set up a user agent so that the website doesn't think you are a robot
 ua <- "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36"
@@ -51,9 +30,10 @@ df_article <- data.frame(Title = character(),
                          Article_Text = character(), 
                          Link = character())
 
+# once df is created, append any new articles
 #df_article <- read_csv("data/processed/article_text.csv")
 
-for (url in urls){
+for (url in urls[13]){
   link <- url
   page <- GET(link, user_agent(ua))
   page_text <- read_html(page) 
@@ -61,6 +41,8 @@ for (url in urls){
   article_text_all <- page_text %>% html_elements("p") %>% html_text2()
   if(length(article_title) == 0){
     article_title <- "none given"
+  } else if (is.na(article_title) == TRUE){
+    article_title <- article_text_all[1]
   } else if (article_title == ""){
     article_title <- article_text_all[9]
   } else{article_title <- article_title}
@@ -79,6 +61,8 @@ for (url in urls){
   article_text <- article_text_all[9]
   if(length(article_text) == 0){
     article_text <- "pdf of actual newspaper"
+  } else if (is.na(article_text) == TRUE){
+    article_text <- article_text_all[1]
   } else{article_text <- article_text}
   if(article_text == article_title){
     article_text <- article_text_all[10]
@@ -93,7 +77,7 @@ for (url in urls){
 
 
 ## Write df to csv
-write_csv(df_article, here::here(paste0("data/processed/article_text_", species, Sys.Date(), ".csv")), 
+write_csv(df_article, here::here(paste0("data/processed/article_text_", Sys.Date(), ".csv")), 
                                         col_names = TRUE, 
                                         append = TRUE)
 
@@ -104,7 +88,7 @@ article_codes$Link <- trimws(article_codes$Link)
 df_text_codes <- left_join(df_article, article_codes, by="Link")
 
 ## Write joined df to csv
-write_csv(df_text_codes, here::here(paste0("data/processed/article_text_codes_beavers_", 
+write_csv(df_text_codes, here::here(paste0("data/processed/article_text_codes_", 
                                            Sys.Date(), ".csv")), 
                                            col_names = TRUE, 
                                            append = TRUE)
