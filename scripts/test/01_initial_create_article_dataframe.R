@@ -63,8 +63,7 @@ for (url in urls[13]){
     article_text <- "pdf of actual newspaper"
   } else if (is.na(article_text) == TRUE){
     article_text <- article_text_all[1]
-  } else{article_text <- article_text}
-  if(article_text == article_title){
+  } else if(article_text == article_title){
     article_text <- article_text_all[10]
   } else{article_text <- article_text}
   df_article[nrow(df_article) + 1,] <- c(article_title, 
