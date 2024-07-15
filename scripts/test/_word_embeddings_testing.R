@@ -94,10 +94,16 @@ tidy_word_vector %>%
   nearest_neighbors("grizzly")
 
 tidy_word_vector %>%
+  nearest_neighbors("bear")
+
+tidy_word_vector %>%
   nearest_neighbors("pig")
 
 tidy_word_vector %>%
   nearest_neighbors("beaver")
+
+tidy_word_vector %>%
+  nearest_neighbors("wild")
 
 tidy_word_vector %>%
   nearest_neighbors("agriculture")
@@ -196,7 +202,7 @@ set.seed(2486)
 model_sg <- word2vec(sentences, type = "skip-gram", dim = 15, iter = 20, hs = FALSE)
 emb_sg <- as.matrix(model_sg)
 
-nn_sg <- predict(model_sg, c("dam", "pig", "montana"), type = "nearest", top_n = 5)
+nn_sg <- predict(model_sg, c("grizzly", "bear", "pig", "beaver", "wild"), type = "nearest", top_n = 5)
 nn_sg
 
 model_cb <- word2vec(sentences, type = "cbow", dim = 15, iter = 20)
