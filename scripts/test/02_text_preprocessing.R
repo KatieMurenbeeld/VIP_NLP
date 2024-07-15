@@ -8,13 +8,15 @@ library(tigris)
 # Read in the data
 article_codes <- read.csv(file = "data/original/new_article_coding.csv")
 
-text_grizz <- read.csv(here::here("data/processed/article_text_2024-04-04.csv"))
-text_coyote <- read.csv(here::here("data/processed/article_text_coyote_2024-04-08.csv"))
-text_boars <- read.csv(here::here("data/processed/article_text_boars_2024-04-08.csv"))
-text_wolf <- read.csv(here::here("data/processed/article_text_wolf_2024-04-08.csv"))
-text_beavs <- read.csv(here::here("data/processed/article_text_codes_beavers_2024-06-12.csv"))
+#text_grizz <- read.csv(here::here("data/processed/article_text_2024-04-04.csv"))
+#text_coyote <- read.csv(here::here("data/processed/article_text_coyote_2024-04-08.csv"))
+#text_boars <- read.csv(here::here("data/processed/article_text_boars_2024-04-08.csv"))
+#text_wolf <- read.csv(here::here("data/processed/article_text_wolf_2024-04-08.csv"))
+#text_beavs <- read.csv(here::here("data/processed/article_text_codes_beavers_2024-06-12.csv"))
 
-text_all <- rbind(text_grizz, text_beavs, text_boars, text_coyote, text_wolf)
+#text_all <- rbind(text_grizz, text_beavs, text_boars, text_coyote, text_wolf)
+text_all <- read.csv(here::here("data/processed/article_text_2024-07-11.csv"))
+
 
 ## join to the article codes
 article_codes$Link <- trimws(article_codes$Link)
@@ -23,8 +25,8 @@ text_all$Link <- trimws(text_all$Link)
 df_text_codes <- right_join(text_all, article_codes, by="Link")
 df_text_codes <- df_text_codes %>%
   filter(grepl(" ", df_text_codes$Article_Text) == TRUE)
-df_text_codes <- df_text_codes %>%
-  filter(Species != "Bob Cats")
+#df_text_codes <- df_text_codes %>%
+#  filter(Species != "Bob Cats")
 
 # Preprocess the data
 ## Clean up multiple-spellings in species names, focus, and conflict type
@@ -59,7 +61,7 @@ write_csv(df_text_codes, here::here(paste0("data/processed/clean_text_", Sys.Dat
           col_names = TRUE)
 
 ## Tokenize
-tidy_articles <- articles_text %>%
+tidy_articles <- df_text_codes %>%
   unnest_tokens(word, Article_Text) %>% 
   filter(!grepl('[0-9]', word))  
 
@@ -69,14 +71,14 @@ tidy_articles %>%
 
 ## Remove stop words
 ## Create a small data frame of your own stop words for this project 
-data("stop_words")
-grizz_stop_words <- data.frame(c("p", "br", "strong", "targetednews.com",
-                                 "grizzly", "grizzlies", "bears", "bear")) 
-colnames(grizz_stop_words) <-("word")
+#data("stop_words")
+#grizz_stop_words <- data.frame(c("p", "br", "strong", "targetednews.com",
+#                                 "grizzly", "grizzlies", "bears", "bear")) 
+#colnames(grizz_stop_words) <-("word")
+
+#tidy_articles <- tidy_articles %>%
+#  anti_join(stop_words) %>%
+#  anti_join(grizz_stop_words)
 
 tidy_articles <- tidy_articles %>%
-  anti_join(stop_words) %>%
-  anti_join(grizz_stop_words)
-
-tidy_articles <- tidy_articles %>%
-  select(Title, Focus, Conflict_Type, Value_Orientation, Publication_State, word)
+  select(Title.x, Focus, Conflict_Type, Value_Orientation, Publication_State, word)
