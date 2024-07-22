@@ -3,6 +3,7 @@ library(tidytext)
 library(tidymodels)
 library(textrecipes)
 library(keras3)
+keras3::install_keras(backend = "tensorflow")
 library(ggplot2)
 
 
