@@ -95,6 +95,9 @@ tidy_word_vector %>%
   nearest_neighbors("grizzly")
 
 tidy_word_vector %>%
+  nearest_neighbors("domination")
+
+tidy_word_vector %>%
   nearest_neighbors("bear")
 
 tidy_word_vector %>%
