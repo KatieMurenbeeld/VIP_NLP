@@ -287,49 +287,6 @@ focus_bi_tf_idf %>%
   geom_col(show.legend = FALSE) +
   labs(x = "tf-idf", y = NULL)
 
-# test with value orientation
-value_words <- uni_text_stop %>%
-  count(value_simple, word)
-
-total_words <- value_words %>% 
-  group_by(value_simple) %>% 
-  summarize(total = sum(n))
-
-value_words <- left_join(value_words, total_words)
-
-value_tf_idf <- value_words %>%
-  bind_tf_idf(word, value_simple, n)
-
-value_tf_idf %>%
-  group_by(value_simple) %>%
-  slice_max(tf_idf, n = 15) %>%
-  ungroup() %>%
-  ggplot(aes(tf_idf, fct_reorder(word, tf_idf), fill = value_simple)) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~value_simple, ncol = 2, scales = "free") +
-  labs(x = "tf-idf", y = NULL)
-
-value_bigrams <- bigrams_united %>%
-  count(value_simple, bigram)
-
-total_bigrams <- value_bigrams %>% 
-  group_by(value_simple) %>% 
-  summarize(total = sum(n))
-
-value_bigrams <- left_join(value_bigrams, total_bigrams)
-
-value_bi_tf_idf <- value_bigrams %>%
-  bind_tf_idf(bigram, value_simple, n)
-
-value_bi_tf_idf %>%
-  group_by(value_simple) %>%
-  slice_max(tf_idf, n = 7) %>%
-  ungroup() %>%
-  ggplot(aes(tf_idf, fct_reorder(bigram, tf_idf), fill = value_simple)) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~value_simple, ncol = 2, scales = "free") +
-  labs(x = "tf-idf", y = NULL)
-
 # repeat with conflict type
 conflict_bigrams <- bigrams_united %>%
   count(Conflict_Type, bigram)
