@@ -22,7 +22,7 @@ articles_filter <- articles %>%
 tidy_text <- articles_filter %>% 
   unnest_tokens(word, Article_Text) %>%
   add_count(word) %>%
-  filter(n >= 50) %>%
+  filter(n >= 10) %>%
   select(-n)
 
 # create a nested data frame with one row per article
@@ -58,7 +58,8 @@ slide_windows <- function(tbl, window_size){
 ## pg. 79
 ## higher PMI means the two words are likely to occur together
 
-plan(multisession())
+#plan(multisession()) # worked last week July 3rd? throwing funny error: Error in UseMethod("tweak") : 
+# no applicable method for 'tweak' applied to an object of class "c('MultisessionFuture', 'ClusterFuture', 'MultiprocessFuture', 'Future', 'environment')" 
 
 tidy_pmi <- nested_words %>%
   mutate(words = future_map(words, slide_windows, 4L)) %>%
@@ -159,11 +160,13 @@ word_matrix <- tidy_text %>%
 
 embedding_matirx <- tidy_word_vector %>%
   cast_sparse(item1, dimension, value)
+saveRDS(embedding_matirx, file = here::here(paste0("data/processed/wildlife_articles_pwe_matrix_" , Sys.Date(), ".RDS")))
 
 doc_matrix <- word_matrix %*% embedding_matirx
 
 dim(doc_matrix)
 
+saveRDS(doc_matrix, file = here::here(paste0("data/processed/wildlife_articles_pwe_" , Sys.Date(), ".RDS")))
 #----Playing with word2vec----
 library(udpipe)
 data(brussels_reviews, package = "udpipe")
