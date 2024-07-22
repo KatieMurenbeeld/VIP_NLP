@@ -14,10 +14,11 @@ library(caret)
 
 # Load the cleaned data
 #articles_text_clean <- read_csv(here::here("data/processed/clean_text_2024-04-09.csv"))
-articles_text_clean <- read_csv(here::here("data/processed/article_text_codes_beavers_2024-06-12.csv"))
+#articles_text_clean <- read_csv(here::here("data/processed/article_text_codes_beavers_2024-06-12.csv"))
+articles_text_clean <- read_csv(here::here("data/processed/clean_text_2024-07-11.csv"))
 
 text_clean_sel <- articles_text_clean %>%
-  dplyr::select(Title.y, Publication_State, Link, Article_Text, Focus, Conflict_Type, Value_Orientation)
+  dplyr::select(Title.x, Publication_State, Article_Text, Focus, Conflict_Type, Value_Orientation)
 
 ## Clean up remaining html code
 #cleanFun <- function(htmlString) {
@@ -52,7 +53,7 @@ text_clean_sel$Conflict_Type <- str_replace(text_clean_sel$Conflict_Type, 'Unsta
 
 # tokenize: unigram, bi-gram, and sentences
 tidy_text_uni <-  text_clean_sel %>%
-  unnest_tokens(word, Article_Text) %>% 
+  unnest_tokens(word, Article_Text, strip_punct = TRUE) %>% 
   filter(!grepl('[0-9]', word))  
 
 tidy_text_bi <-  text_clean_sel %>%
@@ -144,7 +145,7 @@ value_bigrams <- left_join(value_bigrams, total_bigrams)
 
 value_words %>%
   filter(value_simple == "Mutualistic") %>%
-  filter(n > 50) %>%
+  filter(n > 500) %>%
   ggplot(aes(n, word)) +
   geom_col(fill = "lightblue", alpha = 0.8) +
   theme_bw() +
@@ -152,14 +153,14 @@ value_words %>%
 
 value_words %>%
   filter(value_simple == "Neutral") %>%
-  filter(n > 20) %>%
+  filter(n > 500) %>%
   ggplot(aes(n, word)) +
   geom_col(fill = "tan", alpha = 0.8) +
   labs(y = NULL)
 
 value_words %>%
   filter(value_simple == "Domination") %>%
-  filter(n > 12) %>%
+  filter(n > 250) %>%
   ggplot(aes(n, word)) +
   geom_col(fill = "orange", alpha = 0.8) +
   theme_bw() +
@@ -167,7 +168,7 @@ value_words %>%
 
 value_bigrams %>%
   filter(value_simple == "Mutualistic") %>%
-  filter(n > 10) %>%
+  filter(n > 50) %>%
   ggplot(aes(n, bigram)) +
   geom_col(fill = "lightblue", alpha = 0.8) +
   theme_bw() +
@@ -175,14 +176,14 @@ value_bigrams %>%
 
 value_bigrams %>%
   filter(value_simple == "Neutral") %>%
-  filter(n > 5) %>%
+  filter(n > 50) %>%
   ggplot(aes(n, bigram)) +
   geom_col(fill = "tan", alpha = 0.8) +
   labs(y = NULL)
 
 value_bigrams %>%
   filter(value_simple == "Domination") %>%
-  filter(n > 3) %>%
+  filter(n > 25) %>%
   ggplot(aes(n, bigram)) +
   geom_col(fill = "orange", alpha = 0.8) +
   theme_bw() +
@@ -198,7 +199,7 @@ value_tf_idf %>%
   group_by(value_simple) %>%
   slice_max(tf_idf, n = 15) %>%
   ungroup() %>%
-  ggplot(aes(tf_idf, fct_reorder(word, tf_idf), fill = value_simple)) +
+  ggplot(aes(tf_idf, fct_reorder(word, tf_idf), fill = as.factor(value_simple))) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~value_simple, ncol = 2, scales = "free") +
   labs(x = "tf-idf", y = NULL)
