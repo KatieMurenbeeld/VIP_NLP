@@ -13,7 +13,7 @@ library(caret)
 
 
 # Load the cleaned data
-articles_text_clean <- read_csv(here::here("data/processed/clean_text_2024-04-09.csv"))
+articles_text_clean <- read_csv(here::here("data/processed/clean_text_2024-07-25.csv"))
 
 ## Add a document id column
 articles_text_clean$id <- seq.int(nrow(articles_text_clean))
@@ -27,22 +27,7 @@ test_df <- articles_text_clean %>%
   group_by(Title.x) %>%
   nest("multi_labels" = c(Focus, Conflict_Type, Value_Orientation)) %>%
   select(Title.x, multi_labels, Article_Text)
-  
 
-
-## Clean up remaining html code
-cleanFun <- function(htmlString) {
-  return(gsub("<.*?>", "", htmlString))
-}
-
-cleanFun2 <- function(htmlString) {
-  return(gsub(">.*?</", "", htmlString))
-}
-
-for (i in 1:length(articles_text_clean)) {
-  articles_text_clean[[6]][i] <- cleanFun(articles_text_clean[[6]][i])
-  articles_text_clean[[6]][i] <- cleanFun2(articles_text_clean[[6]][i])
-}
 
 # Create simplified value_orientation
 articles_text_clean$value_simple <- as.factor(articles_text_clean$Value_Orientation)
@@ -74,11 +59,15 @@ tidy_text_stop <- tidy_text %>%
   anti_join(stop_words) %>%
   anti_join(wildlife_stop_words)
 
-dtm <- tidy_text_stop %>%
+dtm_stop <- tidy_text_stop %>%
   count(id, word, sort = TRUE) %>%
   bind_tf_idf(word, id, n) %>%
   cast_dtm(id, word, tf_idf)
 
+dtm <- tidy_text %>%
+  count(id, word, sort = TRUE) %>%
+  bind_tf_idf(word, id, n) %>%
+  cast_dtm(id, word, tf_idf)
 
 
 # Split the data: create training, testing, and labels datasets
@@ -93,20 +82,20 @@ trainIndex <- createDataPartition(y = articles_text_clean$id, p = 0.7,list = FAL
 testIndex <- articles_text_clean$id[-trainIndex]
 
 set.seed(455)
-data_to_train <- dtm[trainIndex, ] %>% as.matrix() %>% as.data.frame() 
-data_to_test <- dtm[testIndex, ] %>% as.matrix() %>% as.data.frame()
-label_train <- articles_text_clean$value_simple[trainIndex]
-label_test <- articles_text_clean$value_simple[testIndex]
+data_to_train <- dtm_stop[trainIndex, ] %>% as.matrix() %>% as.data.frame() 
+data_to_test <- dtm_stop[testIndex, ] %>% as.matrix() %>% as.data.frame()
+label_train <- articles_text_clean$Value_Orientation[trainIndex]
+label_test <- articles_text_clean$Value_Orientation[testIndex]
 
 ## Quick look at common words in value_simple
 tidy_text_stop %>%
-  group_by(value_simple) %>%
+  group_by(Value_Orientation) %>%
   count(word) %>%
-  filter(n > 150) %>%
+  filter(n > 200) %>%
   ggplot(aes(n, word)) +
   geom_col() +
   labs(y = NULL) + 
-  facet_wrap(~value_simple)
+  facet_wrap(~Value_Orientation)
 
 
 ## Classification...here we go!
@@ -142,12 +131,15 @@ svm_model <- caret::train(x = data_to_train,
                           #trControl = trctrl, 
                           tuneGrid = data.frame(cost = 1, #accounts for over-fitting
                                                 Loss = 2)) #accounts for misclassifications
+saveRDS(svm_model, here::here(paste0("output/svm_mod_", Sys.Date(), ".rds")))
+
 # 2. Test the trained model on the test data
 svm_predict <- predict(svm_model, newdata = data_to_test)
 # 3. Check the model performance
 # You can look at a confusion matrix to see how well the model did
 svm_confusion_matrix <- confusionMatrix(svm_predict, label_test, mode = "prec_recall")
 svm_confusion_matrix
+saveRDS(svm_confusion_matrix, here::here(paste0("output/svm_mod_confusion_", Sys.Date(), ".rds")))
 
 # Decision trees
 # 1. Train the model on the training data
@@ -176,6 +168,7 @@ rf_mod <- train(x = data_to_train,
                 )
 
 rf_mod
+saveRDS(rf_mod, here::here(paste0("output/rf_mod_", Sys.Date(), ".rds")))
 
 # 2. Test the trained model on the test data
 rf_predict <- predict(rf_mod, newdata = data_to_test)
@@ -183,6 +176,7 @@ rf_predict <- predict(rf_mod, newdata = data_to_test)
 # You can look at a confusion matrix to see how well the model did
 rf_confusion_matrix <- confusionMatrix(rf_predict, label_test, mode = "prec_recall")
 rf_confusion_matrix
+saveRDS(rf_confusion_matrix, here::here(paste0("output/rf_mod_confusion_", Sys.Date(), ".rds")))
 
 # Naive Bayes
 library(e1071)
