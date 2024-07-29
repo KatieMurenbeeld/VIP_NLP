@@ -15,7 +15,7 @@ article_codes <- read.csv(file = "data/original/new_article_coding.csv")
 #text_beavs <- read.csv(here::here("data/processed/article_text_codes_beavers_2024-06-12.csv"))
 
 #text_all <- rbind(text_grizz, text_beavs, text_boars, text_coyote, text_wolf)
-text_all <- read.csv(here::here("data/processed/article_text_2024-07-11.csv"))
+text_all <- read.csv(here::here("data/processed/article_text_2024-07-25.csv"))
 
 
 ## join to the article codes
