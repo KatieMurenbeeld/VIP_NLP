@@ -10,9 +10,18 @@ options(
 
 # Load the new_article_coding_ids.csv
 article_codes <- read.csv(file = "data/original/new_article_coding.csv")
-article_list<- read.csv(file = "data/processed/article_list_11-07-2024-1012.csv") 
-article_list <- article_list %>% 
+article_list_prev <- read.csv(file = "data/processed/article_list_11-07-2024-1012.csv") 
+article_list_new <- read.csv(file = "data/processed/article_list_25-07-2024-1237.csv")
+
+article_list_prev <- article_list_prev %>% 
   select(X, Link, ID)
+article_list_new <- article_list_new %>%
+  select(X, Link, ID)
+
+url_old <- trimws(unique(article_list_prev$Link))
+url_new <- trimws(unique(article_list_new$Link))
+
+urls <- url_new[!(url_new %in% url_old)]
 
 # Create list of article urls
 ## need to trim the leading and trailing white spaces
@@ -23,17 +32,17 @@ urls <- trimws(unique(article_list$Link))
 ua <- "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36"
 
 # Create an empty date. We will append the new article to this data frame
-df_article <- data.frame(Title = character(),
-                         Author = character(),
-                         Published_Date = character(),
-                         Source = character(),
-                         Article_Text = character(), 
-                         Link = character())
+#df_article <- data.frame(Title = character(),
+#                         Author = character(),
+#                         Published_Date = character(),
+#                         Source = character(),
+#                         Article_Text = character(), 
+#                         Link = character())
 
 # once df is created, append any new articles
-#df_article <- read_csv("data/processed/article_text.csv")
+df_article <- read_csv("data/processed/article_text_2024-07-11.csv")
 
-for (url in urls[701:879]){
+for (url in urls){
   link <- url
   page <- GET(link, user_agent(ua))
   page_text <- read_html(page) 
@@ -66,12 +75,12 @@ for (url in urls[701:879]){
   } else if(article_text == article_title){
     article_text <- article_text_all[10]
   } else{article_text <- article_text}
-  df_article[nrow(df_article) + 1,] <- c(article_title, 
+  df_article[nrow(df_article) + 1,] <- as.list(c(article_title, 
                                          author, 
                                          pub_date, 
                                          source,
                                          article_text,
-                                         link)
+                                         link))
 }
 
 
