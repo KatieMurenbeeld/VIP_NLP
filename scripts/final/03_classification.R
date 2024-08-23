@@ -55,7 +55,9 @@ wildlife_stop_words <- data.frame(c("p", "br", "strong", "targetednews.com",
                                  "animals", "species")) 
 colnames(wildlife_stop_words) <-("word")
 
-tidy_text_stop <- tidy_text %>%
+tidy_text_stop <- articles_text_clean %>%
+  unnest_tokens(word, Article_Text) %>% 
+  filter(!grepl('[0-9]', word)) %>%
   anti_join(stop_words) %>%
   anti_join(wildlife_stop_words)
 
@@ -74,7 +76,7 @@ dtm <- tidy_text %>%
 articles_text_clean$Focus <- as.factor(articles_text_clean$Focus)
 articles_text_clean$Conflict_Type <- as.factor(articles_text_clean$Conflict_Type)
 articles_text_clean$Value_Orientation <- as.factor(articles_text_clean$Value_Orientation)
-articles_text_clean$value_simple <- as.factor(articles_text_clean$value_simple)
+#articles_text_clean$value_simple <- as.factor(articles_text_clean$value_simple)
 articles_text_clean <- articles_text_clean %>%
   filter(is.na(Focus) == FALSE)
 
