@@ -3,9 +3,10 @@ library(tidytext)
 library(tidymodels)
 library(textrecipes)
 library(keras3)
-keras3::install_keras(backend = "tensorflow")
+#keras3::install_keras(backend = "tensorflow")
 library(ggplot2)
 
+tensorflow::as_tensor("Hello World")
 
 ## Pseudocode:
 ### 1. Load the data
