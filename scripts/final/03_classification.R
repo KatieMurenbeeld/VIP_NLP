@@ -49,9 +49,16 @@ data("stop_words")
 wildlife_stop_words <- data.frame(c("p", "br", "strong", "targetednews.com",
                                  "grizzly", "grizzlies", "bears", "bear", 
                                  "wolf", "wolves", "coyote", "coyotes", 
-                                 "pigs", "pig", "beaver", "beavers", 
-                                 "amp", "div", "class", "span", "href",
-                                 "wildlife", "wild", "fish", "animal",
+                                 "pigs", "pig", "beaver", "beavers",
+                                 "bison", "mountain lion", "mountain lions",
+                                 "bobcat", "bobcats", "alligator", "alligators",
+                                 "lynx", "wolverine", "wolverines", "monarch", 
+                                 "butterfly", "butterflies", "turtle", "turtle",
+                                 "racoon", "racoons", "elk", "elks", 
+                                 "pronghorn", "pronghorns", "prairie dog", 
+                                 "prairie dogs", "mink", "porcupine", 
+                                 "porcupines", "amp", "div", "class", "span", 
+                                 "href", "wildlife", "wild", "fish", "animal",
                                  "animals", "species")) 
 colnames(wildlife_stop_words) <-("word")
 
@@ -66,11 +73,15 @@ dtm_stop <- tidy_text_stop %>%
   bind_tf_idf(word, id, n) %>%
   cast_dtm(id, word, tf_idf)
 
+## check the object size
+print(object.size(dtm_stop), units = "Mb")
+
 dtm <- tidy_text %>%
   count(id, word, sort = TRUE) %>%
   bind_tf_idf(word, id, n) %>%
   cast_dtm(id, word, tf_idf)
-
+## check the object size
+print(object.size(dtm), units = "Mb")
 
 # Split the data: create training, testing, and labels datasets
 articles_text_clean$Focus <- as.factor(articles_text_clean$Focus)
@@ -89,11 +100,11 @@ data_to_test <- dtm_stop[testIndex, ] %>% as.matrix() %>% as.data.frame()
 label_train <- articles_text_clean$Value_Orientation[trainIndex]
 label_test <- articles_text_clean$Value_Orientation[testIndex]
 
-## Quick look at common words in value_simple
+## Quick look at common words in Value Orientation
 tidy_text_stop %>%
   group_by(Value_Orientation) %>%
   count(word) %>%
-  filter(n > 200) %>%
+  filter(n > 250) %>%
   ggplot(aes(n, word)) +
   geom_col() +
   labs(y = NULL) + 
@@ -101,12 +112,12 @@ tidy_text_stop %>%
 
 
 ## Classification...here we go!
-fitControl <- trainControl(## 10-fold CV
+fitControl <- trainControl(
+  ## 10-fold CV
   method = "repeatedcv",
   number = 10,
-  #summaryFunction = ,
-    ## repeated ten times
-    repeats = 10)
+  ## repeated ten times
+  repeats = 10)
 
 # KNN
 # 1. Train the model
@@ -115,24 +126,31 @@ knn_model <- train(x = data_to_train, #training data
                    method = "knn", #the algorithm
                    trControl = fitControl, #the resampling strategy we will use
                    metric = "Kappa",
-                   #tuneGrid = data.frame(k = 2) #the hyperparameter or param-tuning
+                   tuneGrid = data.frame(k = seq(2, 10, by = 1)) #the hyperparameter or param-tuning
 )
-
+knn_model
+plot(knn_model)
 # 2. Test the trained model on the test data
 knn_predict <- predict(knn_model, newdata = data_to_test)
 # 3. Check the model performance
 # You can look at a confusion matrix to see how well the model did
 knn_confusion_matrix <- confusionMatrix(knn_predict, label_test, mode = "prec_recall")
 knn_confusion_matrix
+knn_cm_table <- as.table(knn_confusion_matrix)
+
+saveRDS(knn_model, file = here::here(paste0("output/knn_model_", Sys.Date(), ".RDS")))
+saveRDS(knn_confusion_matrix, file = here::here(paste0("output/knn_confustion_matrix_", Sys.Date(), ".RDS")))
 
 # SVM
 # 1. Train the model on the training data
 svm_model <- caret::train(x = data_to_train,
                           y = as.factor(label_train),
                           method = "svmLinear3",
-                          #trControl = trctrl, 
-                          tuneGrid = data.frame(cost = 1, #accounts for over-fitting
-                                                Loss = 2)) #accounts for misclassifications
+                          trControl = fitControl, 
+                          #tuneGrid = data.frame(cost = 1, #accounts for over-fitting
+                          #                      Loss = 2)) #accounts for misclassifications
+                          tuneGrid = data.frame(cost = seq(0.2, 2, by = 0.2),
+                                                 Loss = 2))
 saveRDS(svm_model, here::here(paste0("output/svm_mod_", Sys.Date(), ".rds")))
 
 # 2. Test the trained model on the test data
@@ -142,13 +160,15 @@ svm_predict <- predict(svm_model, newdata = data_to_test)
 svm_confusion_matrix <- confusionMatrix(svm_predict, label_test, mode = "prec_recall")
 svm_confusion_matrix
 saveRDS(svm_confusion_matrix, here::here(paste0("output/svm_mod_confusion_", Sys.Date(), ".rds")))
+#as.table(svm_confusion_matrix$byClass)
 
 # Decision trees
 # 1. Train the model on the training data
 dt_mod <- train(x = data_to_train,
                 y = as.factor(label_train),
                 method = "rpart",
-                #trControl = trctrl
+                trControl = fitControl,
+                tuneGrid = data.frame(cp = )
 )
 # 2. Test the trained model on the test data
 dt_predict <- predict(dt_mod, newdata = data_to_test) 
