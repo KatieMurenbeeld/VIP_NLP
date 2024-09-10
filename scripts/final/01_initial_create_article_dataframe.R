@@ -9,9 +9,9 @@ options(
 )
 
 # Load the new_article_coding_ids.csv
-article_codes <- read.csv(file = "data/original/new_article_coding.csv")
+article_codes <- read.csv(file = "data/original/james_edited_values_coding.csv")
 article_list_prev <- read.csv(file = "data/processed/article_list_11-07-2024-1012.csv") 
-article_list_new <- read.csv(file = "data/processed/article_list_25-07-2024-1237.csv")
+article_list_new <- read.csv(file = "data/processed/article_list_10-09-2024-0933.csv")
 
 article_list_prev <- article_list_prev %>% 
   select(X, Link, ID)
@@ -26,7 +26,7 @@ urls <- url_new[!(url_new %in% url_old)]
 # Create list of article urls
 ## need to trim the leading and trailing white spaces
 ## in future only want newly coded articles, could make a list and then use -%in%
-urls <- trimws(unique(article_list$Link))
+#urls <- trimws(unique(article_list$Link))
 
 # Set up a user agent so that the website doesn't think you are a robot
 ua <- "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36"
@@ -40,9 +40,11 @@ ua <- "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like
 #                         Link = character())
 
 # once df is created, append any new articles
-df_article <- read_csv("data/processed/article_text_2024-07-11.csv")
+#df_article <- read_csv("data/processed/article_text_2024-07-11.csv")
+df_article <- read_csv("data/processed/article_text_2024-07-25.csv")
 
-for (url in urls){
+apocalypse_sow <- "https://infoweb.newsbank.com/apps/news/document-view?p=WORLDNEWS&docref=news/190D1C3CE3AF5488&f=basic"
+for (url in apocalypse_sow){
   link <- url
   page <- GET(link, user_agent(ua))
   page_text <- read_html(page) 
@@ -85,7 +87,7 @@ for (url in urls){
 
 
 ## Write df to csv
-write_csv(df_article, here::here(paste0("data/processed/article_text_", Sys.Date(), ".csv")), 
+write_csv(df_article, here::here(paste0("data/processed/article_text_apocalypse_sow_", Sys.Date(), ".csv")), 
                                         col_names = TRUE, 
                                         append = TRUE)
 
@@ -96,14 +98,14 @@ article_codes$Link <- trimws(article_codes$Link)
 df_text_codes <- left_join(df_article, article_codes, by="Link")
 
 ## Write joined df to csv
-write_csv(df_text_codes, here::here(paste0("data/processed/article_text_codes_", 
+write_csv(df_text_codes, here::here(paste0("data/processed/article_text_codes_apocalypse_sow_", 
                                            Sys.Date(), ".csv")), 
                                            col_names = TRUE, 
                                            append = TRUE)
 
 
 ### testing, not all articles have the same number of "p" elements
-link <- urls[6]
+link <- "https://infoweb.newsbank.com/apps/news/document-view?p=WORLDNEWS&docref=news/190D1C3CE3AF5488&f=basic"
 page <- GET(link, user_agent(ua))
 page_text <- read_html(page) 
 page_text %>% html_element("h1") %>% html_text2()
