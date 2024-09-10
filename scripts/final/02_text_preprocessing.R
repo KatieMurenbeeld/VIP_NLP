@@ -4,10 +4,11 @@ library(tidytext)
 library(SnowballC)
 library(ggplot2)
 library(tigris)
+library(lubridate)
 
 # Read in the data
-article_codes <- read.csv(file = "data/original/new_article_coding.csv")
-text_all <- read.csv(here::here("data/processed/article_text_2024-07-25.csv"))
+article_codes <- read.csv(file = "data/original/james_edited_values_coding.csv")
+text_all <- read.csv(here::here("data/processed/article_text_2024-09-10.csv"))
 
 
 ## join to the article codes
@@ -35,6 +36,25 @@ df_text_codes$Article_Text <- str_replace(df_text_codes$Article_Text, "i'm", "i 
 df_text_codes$Article_Text <- str_replace(df_text_codes$Article_Text, "don't", "do not")
 df_text_codes$Article_Text <- str_replace(df_text_codes$Article_Text, "it's", "it is")
 
+## Get the minimum and maximum date
+colnames(df_text_codes)
+
+### convert Published_Date to datetime
+df_text_codes <- df_text_codes %>%
+  mutate(Published_Date = mdy(Published_Date))
+
+min(df_text_codes$Published_Date, na.rm = TRUE)
+max(df_text_codes$Published_Date, na.rm = TRUE)
+
+## Get the unique sources
+unique(df_text_codes$Source)
+length(unique(df_text_codes$Source))
+sources <- as.data.frame(df_text_codes %>% 
+                           distinct(Link, .keep_all = TRUE) %>%
+                           group_by(Source) %>%
+                           summarise(count = n()))
+
+# Select columns of interest
 df_text_codes <- df_text_codes %>%
   select(Title.x, Publication_State, Focus, Conflict_Type, Value_Orientation, Article_Text)
 
