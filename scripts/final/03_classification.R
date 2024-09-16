@@ -10,10 +10,11 @@ library(glmnet)
 library(utiml)
 library(tm)
 library(caret)
+library(kableExtra)
 
 
 # Load the cleaned data
-articles_text_clean <- read_csv(here::here("data/processed/clean_text_2024-07-25.csv"))
+articles_text_clean <- read_csv(here::here("data/processed/clean_text_2024-09-16.csv"))
 
 ## Add a document id column
 articles_text_clean$id <- seq.int(nrow(articles_text_clean))
@@ -38,6 +39,23 @@ articles_text_clean=within(articles_text_clean,{
   value_simple[Value_Orientation == "6" | Value_Orientation == "7"] = "Domination"
 })
 
+# plot the distribution of Value Orientations and Species
+articles_text_clean %>% 
+  group_by(Value_Orientation) %>%
+  summarise(count = n()) %>%
+  ggplot(aes(x=as.factor(Value_Orientation), y=count)) +
+  geom_bar(stat = "identity") + 
+  scale_x_discrete(limits = c("1", "2", "3", "4", "5", "6", "7"))
+
+
+articles_text_clean %>%
+  group_by(Species) %>%
+  summarise(count = n()) %>%
+  ggplot(aes(x= Species, y = count)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  
+
 # tokenize and create dtm first?
 tidy_text <-  articles_text_clean %>%
   unnest_tokens(word, Article_Text) %>% 
@@ -53,7 +71,7 @@ wildlife_stop_words <- data.frame(c("p", "br", "strong", "targetednews.com",
                                  "bison", "mountain lion", "mountain lions",
                                  "bobcat", "bobcats", "alligator", "alligators",
                                  "lynx", "wolverine", "wolverines", "monarch", 
-                                 "butterfly", "butterflies", "turtle", "turtle",
+                                 "butterfly", "butterflies", "turtle", "turtles",
                                  "racoon", "racoons", "elk", "elks", 
                                  "pronghorn", "pronghorns", "prairie dog", 
                                  "prairie dogs", "mink", "porcupine", 
@@ -68,10 +86,15 @@ tidy_text_stop <- articles_text_clean %>%
   anti_join(stop_words) %>%
   anti_join(wildlife_stop_words)
 
+#dtm_stop <- tidy_text_stop %>%
+#  count(id, word, sort = TRUE) %>%
+#  bind_tf_idf(word, id, n) %>%
+#  cast_dtm(id, word, tf_idf)
+
 dtm_stop <- tidy_text_stop %>%
-  count(id, word, sort = TRUE) %>%
-  bind_tf_idf(word, id, n) %>%
-  cast_dtm(id, word, tf_idf)
+    count(Title.x, word, sort = TRUE) %>%
+    bind_tf_idf(word, Title.x, n) %>%
+    cast_dtm(Title.x, word, tf_idf)
 
 ## check the object size
 print(object.size(dtm_stop), units = "Mb")
@@ -91,6 +114,7 @@ articles_text_clean$Value_Orientation <- as.factor(articles_text_clean$Value_Ori
 articles_text_clean <- articles_text_clean %>%
   filter(is.na(Focus) == FALSE)
 
+#trainIndex <- createDataPartition(y = articles_text_clean$id, p = 0.7,list = FALSE)
 trainIndex <- createDataPartition(y = articles_text_clean$id, p = 0.7,list = FALSE)
 testIndex <- articles_text_clean$id[-trainIndex]
 
@@ -136,12 +160,21 @@ knn_predict <- predict(knn_model, newdata = data_to_test)
 # You can look at a confusion matrix to see how well the model did
 knn_confusion_matrix <- confusionMatrix(knn_predict, label_test, mode = "prec_recall")
 knn_confusion_matrix
-knn_cm_table <- as.table(knn_confusion_matrix)
+knn_cm_table <- as.table(knn_confusion_matrix$table)
+knn_by_class_table <- as.table(knn_confusion_matrix$byClass)
+
+# save the tables
+#test_table <- 
+
+kable(knn_cm_table, "latex") %>%
+  kable_styling(latex_options = c("striped", "scale_down")) %>%
+  as_image(width = 8)
 
 saveRDS(knn_model, file = here::here(paste0("output/knn_model_", Sys.Date(), ".RDS")))
 saveRDS(knn_confusion_matrix, file = here::here(paste0("output/knn_confustion_matrix_", Sys.Date(), ".RDS")))
 
 # SVM
+library(LiblineaR)
 # 1. Train the model on the training data
 svm_model <- caret::train(x = data_to_train,
                           y = as.factor(label_train),
@@ -152,7 +185,8 @@ svm_model <- caret::train(x = data_to_train,
                           tuneGrid = data.frame(cost = seq(0.2, 2, by = 0.2),
                                                  Loss = 2))
 saveRDS(svm_model, here::here(paste0("output/svm_mod_", Sys.Date(), ".rds")))
-
+#svm_model <- readRDS(here::here("output/svm_mod_.rds"))
+plot(svm_model)
 # 2. Test the trained model on the test data
 svm_predict <- predict(svm_model, newdata = data_to_test)
 # 3. Check the model performance
@@ -160,7 +194,8 @@ svm_predict <- predict(svm_model, newdata = data_to_test)
 svm_confusion_matrix <- confusionMatrix(svm_predict, label_test, mode = "prec_recall")
 svm_confusion_matrix
 saveRDS(svm_confusion_matrix, here::here(paste0("output/svm_mod_confusion_", Sys.Date(), ".rds")))
-#as.table(svm_confusion_matrix$byClass)
+svm_cm_table <- as.table(svm_confusion_matrix$table)
+svm_by_class_table <- as.table(svm_confusion_matrix$byClass)
 
 # Decision trees
 # 1. Train the model on the training data
@@ -183,13 +218,14 @@ dt_confusion_matrix
 rf_mod <- train(x = data_to_train,
                 y = as.factor(label_train),
                 method = "ranger",
-                trControl = fitControl,
+                trControl = fitControl
                 #tuneGrid = data.frame(mtry = floor(sqrt(dim(data_to_train)[2])),
                 #                      splitrule = "extratrees",
                 #                      min.node.size = 1)
                 )
 
 rf_mod
+plot(rf_mod)
 saveRDS(rf_mod, here::here(paste0("output/rf_mod_", Sys.Date(), ".rds")))
 
 # 2. Test the trained model on the test data
@@ -199,6 +235,9 @@ rf_predict <- predict(rf_mod, newdata = data_to_test)
 rf_confusion_matrix <- confusionMatrix(rf_predict, label_test, mode = "prec_recall")
 rf_confusion_matrix
 saveRDS(rf_confusion_matrix, here::here(paste0("output/rf_mod_confusion_", Sys.Date(), ".rds")))
+rf_cm_table <- as.table(rf_confusion_matrix$table)
+rf_by_class_table <- as.table(rf_confusion_matrix$byClass)
+
 
 # Naive Bayes
 library(e1071)
