@@ -56,7 +56,8 @@ sources <- as.data.frame(df_text_codes %>%
 
 # Select columns of interest
 df_text_codes <- df_text_codes %>%
-  select(Title.x, Publication_State, Focus, Conflict_Type, Value_Orientation, Article_Text)
+  select(Title.x, Publication_State, Species, Focus, Conflict_Type, 
+         Value_Orientation, Article_Text)
 
 # save cleaned up data
 write_csv(df_text_codes, here::here(paste0("data/processed/clean_text_", Sys.Date(), ".csv")), 
