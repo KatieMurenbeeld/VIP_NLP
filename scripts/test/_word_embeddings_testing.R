@@ -155,7 +155,7 @@ tidy_word_vector %>%
     "the most variation"
   )
 
-# set up for use in a model "treat each document as a collection of wards and summarize the word 
+# set up for use in a model "treat each document as a collection of words and summarize the word 
 # embeddings into document embeddings" pg. 87
 word_matrix <- tidy_text %>%
   count(Link, word) %>%
@@ -185,7 +185,7 @@ nn_nl
 
 # load the text data
 
-articles <- read.csv(here::here("data/processed/article_text_2024-07-11.csv"))
+articles <- read.csv(here::here("data/processed/article_text_2024-09-10.csv"))
 
 # remove/filter for titles with Please try again.
 # select article text
