@@ -65,12 +65,12 @@ model_sg_ns <- word2vec(sentences, type = "skip-gram", dim = 50, iter = 5)
 model_cb_ns <- word2vec(sentences, type = "cbow", dim = 50, iter = 5)
 
 types <- c("skip-gram", "cbow")
-#dimens <- c(50, 100, 200, 300, 400, 500)
-dimens <- c(50, 100)
-#windows <- c(5, 10, 15, 20, 25, 30)
-windows <- c(5, 10)
-#n_samples <- c(5, 10, 15, 20, 25, 30)
-n_samples <- c(5, 10)
+dimens <- c(50, 100, 200, 300, 400, 500)
+#dimens <- c(50, 100)
+windows <- c(5, 10, 15, 20, 25, 30)
+#windows <- c(5, 10)
+n_samples <- c(5, 10, 15, 20, 25, 30)
+#n_samples <- c(5, 10)
                
 wv_df <- data.frame(
   term = character(),
@@ -98,5 +98,6 @@ for (t in types) {
   }
 }
 
+write_csv(wv_df, here::here(paste0("output/word_vector_param_", Sys.Date(), ".csv")))
 
 
