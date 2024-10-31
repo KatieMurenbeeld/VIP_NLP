@@ -60,7 +60,8 @@ test_params_ns_cbow <- ggplot(wv_ns_for_plots_cbow) +
              labeller = label_both) +
   scale_fill_viridis() +
   coord_fixed(ratio=2) +
-  ylab(label = "Similarity") +
+  ylab(label = "Negative Samples") +
+  xlab(label = "Window") +
   labs(title = "Predicting 'hog'", 
        subtitle = "negative sampling: cbow") +
   theme(strip.background = element_blank(),
@@ -77,7 +78,8 @@ test_params_ns_sg <- ggplot(wv_ns_for_plots_sg) +
              labeller = label_both) +
   scale_fill_viridis() +
   coord_fixed(ratio=2) +
-  ylab(label = "Similarity") +
+  ylab(label = "Negative Samples") +
+  xlab(label = "Window") +
   labs(title = "Predicting 'hog'", 
        subtitle = "negative sampling: skip-gram") +
   theme(strip.background = element_blank(),
