@@ -100,4 +100,40 @@ for (t in types) {
 
 write_csv(wv_df, here::here(paste0("output/word_vector_param_", Sys.Date(), ".csv")))
 
+# need to update with using hs = FALSE and then working through different negative sampling sizes
+wv_ns_df <- data.frame(
+  term = character(),
+  similarity = numeric(),
+  rank = numeric(),
+  type = character(),
+  dim = numeric(),
+  window = numeric(),
+  n_samples = numeric()
+)
+
+for (t in types) {
+  for (d in dimens){
+    for(w in windows){
+      for(n_samp in n_samples){
+        model <- word2vec(sentences, type = t, 
+                          dim = d, window = w,
+                          hs = FALSE, negative = n_samp,
+                          iter = 5)
+        pred <- predict(model, newdata = c("grizzly", "bear", "feral"), type = "embedding")
+        pred <- pred["grizzly", ] - pred["bear", ] + pred["feral", ]
+        out <- predict(model, newdata = pred, type = "nearest", top_n = 10)
+        out$type <- t
+        out$dim <- d
+        out$window <- w
+        out$n_samples <- n_samp
+        wv_ns_df <- rbind(wv_ns_df, out)
+      }
+    }
+  }
+}
+
+
+write_csv(wv_ns_df, here::here(paste0("output/word_vector_param_n_sample_", Sys.Date(), ".csv")))
+
+
 
