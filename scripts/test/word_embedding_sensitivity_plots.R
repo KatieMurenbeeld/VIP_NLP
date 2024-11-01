@@ -77,7 +77,7 @@ test_params_ns_sg <- ggplot(wv_ns_for_plots_sg) +
   facet_wrap(~dim,
              labeller = label_both) +
   scale_fill_viridis() +
-  coord_fixed(ratio=2) +
+  coord_fixed(ratio=0.75) +
   ylab(label = "Negative Samples") +
   xlab(label = "Window") +
   labs(title = "Predicting 'hog'", 
@@ -85,6 +85,6 @@ test_params_ns_sg <- ggplot(wv_ns_for_plots_sg) +
   theme(strip.background = element_blank(),
         strip.placement = "outside")
 test_params_ns_sg
-ggsave(here::here("output/word_embedding_param_select_ns_cbow.png"), plot = test_params_ns_sg,
+ggsave(here::here("output/word_embedding_param_select_ns_skip.png"), plot = test_params_ns_sg,
        width = 6, height = 4, dpi = 300)
 
