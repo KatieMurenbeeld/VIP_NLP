@@ -16,6 +16,10 @@ library(kableExtra)
 # Load the cleaned data
 articles_text_clean <- read_csv(here::here("data/processed/clean_text_2024-09-16.csv"))
 
+## Remove duplicate articles -- don't do this, need to keep all because some are double coded
+#articles_text_clean <- articles_text_clean %>%
+#  distinct(., Title.x, .keep_all = TRUE)
+
 ## Add a document id column
 articles_text_clean$id <- seq.int(nrow(articles_text_clean))
 
@@ -86,15 +90,15 @@ tidy_text_stop <- articles_text_clean %>%
   anti_join(stop_words) %>%
   anti_join(wildlife_stop_words)
 
-#dtm_stop <- tidy_text_stop %>%
-#  count(id, word, sort = TRUE) %>%
-#  bind_tf_idf(word, id, n) %>%
-#  cast_dtm(id, word, tf_idf)
-
 dtm_stop <- tidy_text_stop %>%
-    count(Title.x, word, sort = TRUE) %>%
-    bind_tf_idf(word, Title.x, n) %>%
-    cast_dtm(Title.x, word, tf_idf)
+  count(id, word, sort = TRUE) %>%
+  bind_tf_idf(word, id, n) %>%
+  cast_dtm(id, word, tf_idf)
+
+#dtm_stop <- tidy_text_stop %>%
+#    count(Title.x, word, sort = TRUE) %>%
+#    bind_tf_idf(word, Title.x, n) %>%
+#    cast_dtm(Title.x, word, tf_idf)
 
 ## check the object size
 print(object.size(dtm_stop), units = "Mb")
@@ -128,7 +132,7 @@ label_test <- articles_text_clean$Value_Orientation[testIndex]
 tidy_text_stop %>%
   group_by(Value_Orientation) %>%
   count(word) %>%
-  filter(n > 250) %>%
+  filter(n > 200) %>%
   ggplot(aes(n, word)) +
   geom_col() +
   labs(y = NULL) + 
@@ -153,6 +157,7 @@ knn_model <- train(x = data_to_train, #training data
                    tuneGrid = data.frame(k = seq(2, 10, by = 1)) #the hyperparameter or param-tuning
 )
 knn_model
+saveRDS(knn_model, file = here::here(paste0("output/knn_model_", Sys.Date(), ".RDS")))
 plot(knn_model)
 # 2. Test the trained model on the test data
 knn_predict <- predict(knn_model, newdata = data_to_test)
@@ -170,7 +175,7 @@ kable(knn_cm_table, "latex") %>%
   kable_styling(latex_options = c("striped", "scale_down")) %>%
   as_image(width = 8)
 
-saveRDS(knn_model, file = here::here(paste0("output/knn_model_", Sys.Date(), ".RDS")))
+
 saveRDS(knn_confusion_matrix, file = here::here(paste0("output/knn_confustion_matrix_", Sys.Date(), ".RDS")))
 
 # SVM
@@ -187,6 +192,8 @@ svm_model <- caret::train(x = data_to_train,
 saveRDS(svm_model, here::here(paste0("output/svm_mod_", Sys.Date(), ".rds")))
 #svm_model <- readRDS(here::here("output/svm_mod_.rds"))
 plot(svm_model)
+svm_model
+
 # 2. Test the trained model on the test data
 svm_predict <- predict(svm_model, newdata = data_to_test)
 # 3. Check the model performance
@@ -254,6 +261,31 @@ nb_predict <- predict(nb_mod, newdata = data_to_test)
 # You can look at a confusion matrix to see how well the model did
 nb_confusion_matrix <- confusionMatrix(nb_predict, label_test, mode = "prec_recall")
 nb_confusion_matrix
+
+
+
+#---Test out with unlabeled documents
+unlabeled_articles <- read_csv(here::here("data/processed/newdata_for_model_testing_text_2024-11-06.csv"))
+
+## Add a document id column
+unlabeled_articles$id <- seq.int(nrow(unlabeled_articles))
+
+tidy_text_unlabel <- unlabeled_articles %>%
+  unnest_tokens(word, Article_Text) %>% 
+  filter(!grepl('[0-9]', word)) %>%
+  anti_join(stop_words) %>%
+  anti_join(wildlife_stop_words)
+
+dtm_test <- tidy_text_unlabel %>%
+  count(id, word, sort = TRUE) %>%
+  bind_tf_idf(word, id, n) %>%
+  cast_dtm(id, word, tf_idf)
+
+dtm_test_df <- dtm_test %>% as.matrix() %>% as.data.frame() 
+
+test_knn_predict <- predict(knn_model, newdata = dtm_test_df)
+
+
 
 #---Would these models work better with bi- or tri-grams?----
 
