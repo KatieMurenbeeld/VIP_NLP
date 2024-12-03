@@ -83,7 +83,9 @@ final_fit <- last_fit(nb_wf, text_split)
 final_wf <- final_fit %>%
   extract_workflow()
 
-predict(final_wf, )
+predict(final_wf, new_data = unlabeled_articles) #it worked!!
+
+# this workflow worked. now I need to train and test knn, svm, and rf
 
 
 
