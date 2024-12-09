@@ -72,8 +72,9 @@ knn_tune_grid <- grid_regular(
 
 final_tune_grid <- grid_regular(
   neighbors(range = c(2, 10)), 
-  max_tokens(range = c(1000, 3000)),
-  levels = c(neighbors = 9, max_tokens = 3)
+  #max_tokens(range = c(1000, 3000)),
+  max_tokens(range = c(500, 1300)),
+  levels = c(neighbors = 9, max_tokens = 9)
 )
 final_tune_grid
 
@@ -105,14 +106,23 @@ knn_tune_rs %>%
   autoplot(type = "heatmap") 
 
 
-best_neighbors <- knn_tune %>%
+best_neighbors <- knn_tune_rs %>%
   select_best(metric = "accuracy") %>%
   pull(neighbors)
+
+best_tokens <- knn_tune_rs %>%
+  select_best(metric = "accuracy") %>%
+  pull(max_tokens)
+
+#somewhere need to update the text_rec with the best max tokens
+# max_tokens = 500 and neighbors = 5
 
 knn_final <- knn_tune_wf %>%
   finalize_workflow(
     select_best(x = knn_tune_rs, metric = "accuracy")
   )
+
+knn_final
 
 knn_rs <- fit_resamples(
   knn_final, 
