@@ -82,6 +82,11 @@ svm_spec <- svm_linear(cost = tune()) %>%
   set_engine("LiblineaR") %>%
   set_mode("classification")
 
+svm_spec <-
+  svm_rbf(cost = tune(), rbf_sigma = tune()) %>%
+  set_mode("classification") %>%
+  set_engine("kernlab")
+
 ## create workflow with tuneable model
 svm_tune_wf <- workflow() %>%
   add_recipe(text_rec_v2) %>%
