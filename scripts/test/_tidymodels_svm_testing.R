@@ -65,15 +65,16 @@ text_wf_v2 <- workflow() %>%
 
 # parameter tuning 
 cntrl <- control_resamples(save_pred = TRUE)
+
 svm_tune_grid <- grid_regular(
-  cost(range = c(-10,5))
+  cost(range = c(-5,5))
 )
 
 final_tune_grid <- grid_regular(
   cost(range = c(-10,5)), 
   #max_tokens(range = c(1000, 3000)),
   max_tokens(range = c(500, 1300)),
-  levels = c(cost = 16, max_tokens = 9)
+  levels = c(cost = 10, max_tokens = 9)
 )
 final_tune_grid
 
@@ -85,6 +86,7 @@ svm_spec <- svm_linear(cost = tune()) %>%
 svm_tune_wf <- workflow() %>%
   add_recipe(text_rec_v2) %>%
   add_model(svm_spec)
+svm_tune_wf
 
 set.seed(6891)
 svm_tune_rs <- tune_grid(
@@ -94,3 +96,8 @@ svm_tune_rs <- tune_grid(
   control = cntrl
 )
 
+svm_tune_rs %>%
+  collect_predictions() %>%
+  filter(id == "Fold02") %>%
+  conf_mat(truth = Value_Orientation, .pred_class) %>%
+  autoplot(type = "heatmap") 
