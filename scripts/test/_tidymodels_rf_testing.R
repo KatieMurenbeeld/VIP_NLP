@@ -66,7 +66,7 @@ text_wf_v2 <- workflow() %>%
 # parameter tuning 
 cntrl <- control_resamples(save_pred = TRUE)
 rf_tune_grid <- grid_regular(
-  cost(range = c(-10,5))
+  trees(range = c(1000, 2000))
 )
 
 final_tune_grid <- grid_regular(
@@ -77,22 +77,24 @@ final_tune_grid <- grid_regular(
 )
 final_tune_grid
 
-rf_spec <- rand_forest(mtry = tune(), 
-                       trees = tune(),
-                       min_n = tune()) %>%
+rf_spec <- rand_forest(mtry = 500, 
+                       trees = tune()
+                       #min_n = tune()
+                       ) %>%
   set_engine("ranger") %>%
   set_mode("classification")
 
 ## create workflow with tuneable model
-svm_tune_wf <- workflow() %>%
-  add_recipe(text_rec_v2) %>%
-  add_model(svm_spec)
+rf_tune_wf <- workflow() %>%
+  add_recipe(text_rec_v1) %>%
+  add_model(rf_spec)
+rf_tune_wf
 
 set.seed(6891)
-svm_tune_rs <- tune_grid(
-  svm_tune_wf,
+rf_tune_rs <- tune_grid(
+  rf_tune_wf,
   resamples = text_folds,
-  grid = final_tune_grid, 
+  grid = rf_tune_grid, 
   control = cntrl
 )
 
