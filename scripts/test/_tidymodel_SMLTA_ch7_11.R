@@ -210,3 +210,92 @@ lasso_final_wf <- lasso_final_fitted %>%
   extract_workflow()
 
 predict(lasso_final_wf, new_data = unlabeled_articles)
+
+# repeat the process with a knn model
+# set up a knn workflow
+
+
+knn_tune_grid <- grid_regular(
+  max_tokens(range = c(500, 1300)),
+  neighbors(range = c(2, 10)),
+  levels = c(max_tokens = 5, neighbors = 9)
+)
+knn_tune_grid
+
+# create a knn model 
+knn_spec <- nearest_neighbor(neighbors = 5) %>%
+  set_engine("kknn") %>%
+  set_mode("classification")
+
+# create a tuneable knn model
+knn_tune <- nearest_neighbor(neighbors = tune()) %>%
+  set_engine("kknn") %>%
+  set_mode("classification")
+
+knn_wf <- workflow() %>%
+  add_recipe(text_rec_v3) %>%
+  add_model(knn_spec)
+knn_wf
+
+knn_tune_wf <- workflow() %>%
+  add_recipe(text_rec_v3) %>%
+  add_model(knn_tune)
+knn_tune_wf
+
+set.seed(2244)
+knn_rs <- tune_grid(
+  knn_wf,
+  resamples = text_folds,
+  grid = tokens_tune_grid, 
+  control = cntrl
+)
+
+autoplot(knn_rs)
+
+knn_tune_rs <- tune_grid(
+  knn_tune_wf,
+  resamples = text_folds,
+  grid = knn_tune_grid, 
+  control = cntrl
+)
+
+autoplot(knn_tune_rs)
+
+best_knn_tune_acc <- knn_tune_rs %>%
+  show_best(metric = "accuracy")
+best_knn_tune_acc
+
+knn_final <- knn_tune_wf %>%
+  finalize_workflow(
+    select_best(x = knn_tune_rs, metric = "accuracy")
+  )
+
+knn_final_rs <- fit_resamples(
+  knn_final, 
+  text_folds, 
+  control = control_resamples(save_pred = TRUE)
+)
+
+knn_rs_metrics <- collect_metrics(knn_final_rs)
+knn_rs_predictions <- collect_predictions(knn_final_rs)
+
+knn_rs_predictions %>%
+  filter(id == "Fold02") %>%
+  conf_mat(truth = Value_Orientation, .pred_class) %>%
+  autoplot(type = "heatmap") 
+
+knn_final_fitted <- last_fit(knn_final, text_split)
+
+collect_metrics(knn_final_fitted)
+
+collect_predictions(knn_final_fitted) %>%
+  conf_mat(truth = Value_Orientation, estimate = .pred_class) %>%
+  autoplot(type = "heatmap")
+
+knn_final_wf <- knn_final_fitted %>%
+  extract_workflow()
+
+predict(knn_final_wf, new_data = unlabeled_articles)
+
+
+
