@@ -36,6 +36,7 @@ text2wvo <- articles_text_clean %>%
   dplyr::select(Article_Text, Value_Orientation)
 
 text2wvo$Value_Orientation <- as.factor(text2wvo$Value_Orientation)
+hist(as.numeric(text2wvo$Value_Orientation))
 
 text_split <- initial_split(text2wvo, strat = Value_Orientation)
 
@@ -177,12 +178,6 @@ predict(knn_final_wf, new_data = dtm_test_df) # i can't use a premade dtm. Tidym
 
 # maybe if I make a new workflow? But I might need to use the same work flow to train the model...
 
-
-
-# try out the lasso regression? Is that what I'm doing with the tune grids?
-
-lasso_wf <- workflow() %>%
-  add_recipe(text_rec)
 
 
 
