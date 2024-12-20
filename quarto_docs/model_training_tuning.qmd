@@ -1,0 +1,537 @@
+---
+title: "wildlife values supervised classification model training"
+author: "Katie Murenbeeld"
+date: Sys.Date()
+format:
+  html:
+    fig-width: 8
+    fig-height: 4
+    code-fold: true
+---
+
+# Supervised Classification Model Training
+
+The basic steps for each of the models/algorithms described below:
+
+1.  split the data into training and testing sets
+2.  create a text recipe (model, value orientation from text) on the training set
+3.  add preprocessing steps to the text recipe
+4.  create a tuneable model (multinomial, knn, svm, rf, etc)
+5.  create a model workflow by adding the text recipe and the model
+6.  tune the model using the cross validation folds created from the training data and a tune grid with the ranges for the (hyper)parameters
+7.  use last_fit() to "fit our model one last time on the training data and evaluate it on our testing data"
+8.  extract and save the final fitted model
+
+## Data and control for all models
+
+Load the required libraries. We will be using tidy models to build recipes and workflows.
+
+```{r}
+#| echo: false
+#| message: false
+
+# Load the required libraries
+library(tidyverse)
+library(tidymodels)
+library(tidytext)
+library(textrecipes)
+library(discrim)
+library(themis)
+library(naivebayes)
+library(recipes)
+library(hardhat)
+library(glmnet)
+library(utiml)
+library(tm)
+library(caret)
+library(kableExtra)
+library(kknn)
+library(stopwords)
+```
+
+Load the "coded" data. Here we will be training multiclass classification models on the wildlife newspaper articles and the manually coded "value orientations".
+
+```{r}
+#| message: false
+
+# Load the cleaned data
+articles_text_clean <- read_csv(here::here("data/processed/clean_text_2024-09-16.csv"))
+
+# drop any rows with NA for Value_Orientation
+articles_text_clean <- articles_text_clean[!is.na(articles_text_clean$Value_Orientation), ]
+
+# Load the unlabeled documents to make sure predict.model_fit() will work
+# Note this is a very small dataset of 6 wildlife articles without a value orientation
+unlabeled_articles <- read_csv(here::here("data/processed/newdata_for_model_testing_text_2024-11-06.csv"))
+unlabeled_articles <- unlabeled_articles %>%
+  dplyr::select(Article_Text)
+
+# select relevant variables from articles_text_clean
+text2wvo <- articles_text_clean %>%
+  dplyr::select(Article_Text, Value_Orientation)
+
+## make Value_Orientation a factor
+text2wvo$Value_Orientation <- as.factor(text2wvo$Value_Orientation)
+
+head(articles_text_clean)
+```
+
+Then split the coded data in a training and testing set.
+
+```{r}
+# then split the data into training and testing sets
+text_split <- initial_split(text2wvo, strat = Value_Orientation)
+
+text_train <- training(text_split)
+text_test <- testing(text_split)
+```
+
+And create the text "recipe".
+
+```{r}
+# create the text training recipe (model)
+text_rec <- 
+  recipe(Value_Orientation ~ Article_Text, data = text_train)
+```
+
+Finally, modify the text recipe with several preprocessing steps.
+
+1.  Tokenize the article text
+2.  Remove stopwords (from the stopwords library)
+3.  Set parameters for token filtering
+
+<!-- -->
+
+i)  Here the maximum number of tokens to use is a tuneable parameters
+ii) Set the minimum number of time a token needs to appear to 100
+
+<!-- -->
+
+4.  Create a term frequency - inverse document frequency document term matrix
+
+```{r}
+text_rec_v1 <- text_rec %>%
+  step_tokenize(Article_Text) %>%
+  step_stopwords(Article_Text) %>%
+  step_tokenfilter(Article_Text, max_tokens = tune(), min_times = 100) %>%
+  step_tfidf(Article_Text)
+```
+
+Set the the resampling methods to save predictions, create the text cross validation folds for parameter tuning, and create a simple tuning grid for finding the optimal number of tokens to retain for training and tuning.
+
+```{r}
+# From the training data split, create the cross validation resampling folds for training/tuning
+set.seed(234)
+text_folds <- vfold_cv(text_train)
+
+# For resamples, save the predictions
+cntrl <- control_resamples(save_pred = TRUE)
+
+# Create a simple tuning grid to find the optimal number of tokens to retain for modle trainig
+tokens_tune_grid <- grid_regular(
+  max_tokens(range = c(500, 1300)),
+  levels = c(max_tokens = 9)
+)
+tokens_tune_grid
+
+```
+
+### "Simple" Multinomial Regression Model
+
+In this section we create two workflows for a multinomial regression model. One in which we find the max number of tokens to retain, and one in which we find the max tokens and penalty. The penalty is a regularization in the model.
+
+```{r}
+# create a simple linear model 
+reg_spec <- multinom_reg(penalty = 0.01, mixture = 1) %>%
+  set_mode("classification") %>%
+  set_engine("glmnet")
+
+# create the model workflow
+reg_wf <- workflow() %>%
+  add_recipe(text_rec_v1) %>%
+  add_model(reg_spec)
+
+# create a tuneable linear model
+reg_tune <- multinom_reg(penalty = tune(), mixture = 1) %>%
+  set_mode("classification") %>%
+  set_engine("glmnet")
+
+# create the model workflow
+reg_tune_wf <- workflow() %>%
+  add_recipe(text_rec_v1) %>%
+  add_model(reg_tune)
+reg_tune_wf
+```
+
+For the "tuneable" model we need to create a different tuning grid.
+
+```{r}
+reg_tune_grid <- grid_regular(
+  max_tokens(range = c(500, 1300)),
+  penalty(range = c(-4, 0)),
+  levels = c(max_tokens = 5, penalty = 20)
+)
+reg_tune_grid
+```
+
+Tune the max tokens on the cross validation folds created from the training data.
+
+```{r}
+#| message: false
+
+set.seed(2244)
+reg_rs <- tune_grid(
+  reg_wf, 
+  resamples = text_folds, 
+  grid = tokens_tune_grid,
+  control = cntrl
+)
+
+```
+
+```{r}
+#| label: fig-multinom_maxtoken
+#| fig-cap: "Multinomial Regression Accuracy with Varying Number of Retained Tokens"
+autoplot(reg_rs)
+```
+
+Tune the model on the cross validation folds created from the training data for both max tokens and the penalty.
+
+```{r}
+#| message: false
+
+set.seed(2244)
+reg_tune_rs <- tune_grid(
+  reg_tune_wf, 
+  resamples = text_folds, 
+  grid = reg_tune_grid,
+  control = cntrl
+)
+
+```
+
+```{r}
+#| label: fig-multinom_tune
+#| fig-cap: "Multinomial Regression Accuracy with Varying Number of Retained Tokens and Penalty"
+autoplot(reg_tune_rs)
+```
+
+Create a new workflow with the optimal parameters based on accuracy.
+
+```{r}
+reg_final <- reg_tune_wf %>%
+  finalize_workflow(
+    select_best(x = reg_tune_rs, metric = "accuracy")
+  )
+```
+
+Tune the final model on the cross validation folds.
+
+```{r}
+reg_final_rs <- fit_resamples(
+  reg_final, 
+  text_folds, 
+  control = control_resamples(save_pred = TRUE)
+)
+```
+
+Create a confusion matrix from one of the CV folds
+
+```{r}
+reg_rs_metrics <- collect_metrics(reg_final_rs)
+reg_rs_predictions <- collect_predictions(reg_final_rs)
+```
+
+```{r}
+reg_rs_predictions %>%
+  filter(id == "Fold02") %>%
+  conf_mat(truth = Value_Orientation, .pred_class) %>%
+  autoplot(type = "heatmap") 
+```
+
+Complete a final fit of the model.
+
+```{r}
+reg_final_fitted <- last_fit(reg_final, text_split)
+```
+
+Review the confusion matrix.
+
+```{r}
+collect_metrics(reg_final_fitted)
+
+collect_predictions(reg_final_fitted) %>%
+  conf_mat(truth = Value_Orientation, estimate = .pred_class) %>%
+  autoplot(type = "heatmap")
+```
+
+Extract the work flow.
+
+```{r}
+reg_final_wf <- reg_final_fitted %>%
+  extract_workflow()
+```
+
+Save the fitted model as an RDS file.
+
+```{r}
+write_rds(reg_final_wf, file = here::here("output/models/reg_final_wf.rds"))
+#test_wf <- readRDS(here::here("output/models/test_final_wf.rds"))
+print("Saved Fitted Multinomial Regresssion Model")
+```
+
+### K-Nearest Neighbors
+
+Create tune grid for knn. Change max tokens and number of neighbors.
+
+```{r}
+knn_tune_grid <- grid_regular(
+  max_tokens(range = c(500, 1300)),
+  neighbors(range = c(2, 10)),
+  levels = c(max_tokens = 5, neighbors = 9)
+)
+knn_tune_grid
+```
+
+Create the knn model workflow.
+
+```{r}
+knn_tune <- nearest_neighbor(neighbors = tune()) %>%
+  set_engine("kknn") %>%
+  set_mode("classification")
+
+knn_tune_wf <- workflow() %>%
+  add_recipe(text_rec_v1) %>%
+  add_model(knn_tune)
+knn_tune_wf
+```
+
+```{r}
+knn_tune_rs <- tune_grid(
+  knn_tune_wf,
+  resamples = text_folds,
+  grid = knn_tune_grid, 
+  control = cntrl
+)
+```
+
+```{r}
+autoplot(knn_tune_rs)
+```
+
+```{r}
+knn_final <- knn_tune_wf %>%
+  finalize_workflow(
+    select_best(x = knn_tune_rs, metric = "accuracy")
+  )
+```
+
+```{r}
+knn_final_rs <- fit_resamples(
+  knn_final, 
+  text_folds, 
+  control = control_resamples(save_pred = TRUE)
+)
+```
+
+```{r}
+knn_final_fitted <- last_fit(knn_final, text_split)
+```
+
+```{r}
+collect_metrics(knn_final_fitted)
+```
+
+```{r}
+collect_predictions(knn_final_fitted) %>%
+  conf_mat(truth = Value_Orientation, estimate = .pred_class) %>%
+  autoplot(type = "heatmap")
+```
+
+Extract the work flow.
+
+```{r}
+knn_final_wf <- knn_final_fitted %>%
+  extract_workflow()
+```
+
+Save the fitted model as an RDS file.
+
+```{r}
+write_rds(knn_final_wf, file = here::here("output/models/knn_final_wf.rds"))
+print("Saved Fitted Knn Model")
+```
+### Random Forest
+
+Define the tuning grid for the random forest. 
+
+```{r}
+rf_tune_grid <- grid_regular(
+  trees(range = c(1000, 5000)), 
+ # mtry(range = c(10, 30)),
+#  min_n(range = c(2, 8)),
+  max_tokens(range = c(500, 1300)),
+  levels = c(trees = 5, 
+             #mtry = 5, 
+             #min_n = 5, 
+             max_tokens = 9)
+)
+
+rf_tune_grid2 <- grid_regular(
+  #trees(range = c(1000, 5000)), 
+  mtry(range = c(10, 30)),
+  min_n(range = c(2, 8)),
+  #max_tokens(range = c(500, 1300)),
+  levels = c(#trees = 5, 
+             mtry = 5, 
+             min_n = 5 
+             #max_tokens = 9
+             )
+)
+```
+
+Create the random forest model and workflow
+
+```{r}
+rf_spec <- rand_forest(mtry = 20, 
+                       trees = tune(),
+                       min_n = 4
+                       ) %>%
+  set_engine("ranger") %>%
+  set_mode("classification")
+
+## create workflow with tuneable model
+rf_tune_wf <- workflow() %>%
+  add_recipe(text_rec_v1) %>%
+  add_model(rf_spec)
+rf_tune_wf
+```
+
+```{r}
+set.seed(6891)
+rf_tune_rs <- tune_grid(
+  rf_tune_wf,
+  resamples = text_folds,
+  grid = rf_tune_grid, 
+  control = cntrl
+)
+```
+
+```{r}
+autoplot(rf_tune_rs)
+```
+```{r}
+rf_best_acc <- rf_tune_rs %>%
+  show_best(metric = "accuracy")
+rf_best_acc
+```
+
+```{r}
+## create a second workflow with the other parameters to optimize
+trees_use <- rf_best_acc$trees
+max_tokens_use <- rf_best_acc$max_tokens
+
+rf_spec2 <- rand_forest(mtry = tune(), 
+                       trees = trees_use[1],
+                       min_n = tune()
+                       ) %>%
+  set_engine("ranger") %>%
+  set_mode("classification")
+
+text_rec_v2 <- text_rec %>%
+  step_tokenize(Article_Text) %>%
+  step_stopwords(Article_Text) %>%
+  step_tokenfilter(Article_Text, max_tokens = max_tokens_use[1], min_times = 100) %>%
+  step_tfidf(Article_Text)
+
+rf_tune_wf2 <- workflow() %>%
+  add_recipe(text_rec_v2) %>%
+  add_model(rf_spec2)
+rf_tune_wf2
+```
+
+```{r}
+set.seed(6891)
+rf_tune_rs2 <- tune_grid(
+  rf_tune_wf2,
+  resamples = text_folds,
+  grid = rf_tune_grid2, 
+  control = cntrl
+)
+```
+
+```{r}
+autoplot(rf_tune_rs2)
+```
+```{r}
+rf_best_acc2 <- rf_tune_rs2 %>%
+  show_best(metric = "accuracy")
+rf_best_acc2
+```
+```{r}
+## create a final workflow with the optimized parameters
+trees_use <- rf_best_acc$trees
+max_tokens_use <- rf_best_acc$max_tokens
+mtry_use <- rf_best_acc2$mtry
+min_n_use <- rf_best_acc2$min_n
+
+rf_spec3 <- rand_forest(mtry = mtry_use[1], 
+                       trees = trees_use[1],
+                       min_n = min_n_use[1]
+                       ) %>%
+  set_engine("ranger") %>%
+  set_mode("classification")
+
+text_rec_v3 <- text_rec %>%
+  step_tokenize(Article_Text) %>%
+  step_stopwords(Article_Text) %>%
+  step_tokenfilter(Article_Text, max_tokens = max_tokens_use[1], min_times = 100) %>%
+  step_tfidf(Article_Text)
+
+rf_final_test <- workflow() %>%
+  add_recipe(text_rec_v3) %>%
+  add_model(rf_spec3)
+rf_final_test
+```
+```{r}
+#rf_final <- rf_tune_wf %>%
+#  finalize_workflow(
+#    select_best(x = rf_tune_rs3, metric = "accuracy")
+#  )
+```
+
+```{r}
+rf_final_rs <- fit_resamples(
+  rf_final_test, 
+  text_folds, 
+  control = control_resamples(save_pred = TRUE)
+)
+```
+
+```{r}
+rf_final_fitted <- last_fit(rf_final_test, text_split)
+```
+
+```{r}
+collect_metrics(rf_final_fitted)
+```
+
+```{r}
+collect_predictions(rf_final_fitted) %>%
+  conf_mat(truth = Value_Orientation, estimate = .pred_class) %>%
+  autoplot(type = "heatmap")
+```
+
+```{r}
+rf_final_wf <- rf_final_fitted %>%
+  extract_workflow()
+
+write_rds(rf_final_wf, file = here::here("output/models/rf_final_wf.rds"))
+```
+
+
+
+
+
+
+
