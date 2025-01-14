@@ -2,6 +2,7 @@ library(tidyverse)
 library(ggplot2)
 library(reshape2)
 library(dplyr)
+library(MetBrewer)
 
 
 #---Load the data----
@@ -121,20 +122,56 @@ ggsave(here::here(paste0("output/plots/test_gamma_thres_pred_value_orientation_"
                          Sys.Date(), ".png")), 
        height = 12, width = 12, dpi = 300)
 
-# Build dataset with different distributions
-data <- data.frame(
-  type = c( rep("variable 1", 1000), rep("variable 2", 1000) ),
-  value = c( rnorm(1000), rnorm(1000, mean=4) )
-)
 
-# Represent it
-p <- data %>%
-  ggplot( aes(x=value, fill=type)) +
-  geom_histogram( color="#e9ecef", alpha=0.6, position = 'identity') +
-  scale_fill_manual(values=c("#69b3a2", "#404080")) +
-#  theme_ipsum() +
-  labs(fill="")
-p
 
+# predicted classification through time
+gbear_05_time <- gbear_05_preds %>%
+  dplyr::select(Date, reg_05_pred_class, knn_05_pred_class, rf_05_pred_class) %>%
+  mutate(gamma_thres = "gamma thres = 0.5")
+
+gbear_055_time <- gbear_055_preds %>%
+  dplyr::select(Date, reg_055_pred_class, knn_055_pred_class, rf_055_pred_class) %>%
+  mutate(gamma_thres = "gamma thres = 0.55")
+
+gbear_06_time <- gbear_06_preds %>%
+  dplyr::select(Date, reg_06_pred_class, knn_06_pred_class, rf_06_pred_class) %>%
+  mutate(gamma_thres = "gamma thres = 0.6")
+
+gbear_065_time <- gbear_065_preds %>%
+  dplyr::select(Date, reg_065_pred_class, knn_065_pred_class, rf_065_pred_class) %>%
+  mutate(gamma_thres = "gamma thres = 0.65")
+
+gbear_05_time$Date <- as.Date(gbear_05_time$Date) 
+
+gbear_05_time <- gbear_05_time %>%
+  mutate(year = year(Date), 
+         month = month(Date))
+
+gbear_05_time %>% 
+  group_by(year) %>%
+  summarise(count = n()) %>%
+  ggplot(., aes(x = year, y = count)) + 
+  geom_line() 
+
+gbear_05_time %>% 
+  group_by(year, reg_05_pred_class) %>%
+  summarise(count = n()) %>%
+  ggplot(., aes(x = year, y = count)) + 
+  geom_line(aes(color = as.factor(reg_05_pred_class)))+ 
+  scale_color_met_d("Derain")
+
+gbear_05_time %>% 
+  group_by(year, reg_05_pred_class) %>%
+  summarise(count = n()) %>%
+  ggplot(., aes(x = year, y = count, fill = as.factor(reg_05_pred_class))) + 
+  geom_area() + 
+  scale_fill_met_d("Derain") + 
+  labs(title = "Number of Grizzly Bear Articles", 
+       subtitle = "Multinomial Regression Model\n(gamma threshold = 0.5)",
+       x = "Year", y = "Count", 
+       fill = "Predicted\nValue Orientation")
+ggsave(here::here(paste0("output/plots/gbear_reg_mod_gt05_year_", 
+                         Sys.Date(), ".png")),
+       height = 10, width = 12, dpi = 300)
 
 
