@@ -18,3 +18,6 @@ samp_5pct_df <- gbear_05_preds[samp_5pct,]
 hist(samp_5pct_df$reg_05_pred_class)
 hist(samp_5pct_df$knn_05_pred_class)
 hist(samp_5pct_df$rf_05_pred_class)
+
+write_csv(samp_5pct_df, here::here(paste0("output/predictions/gbear_preds_sample_to_handcode_",
+                                          Sys.Date(), ".csv")), append = FALSE)
