@@ -29,7 +29,7 @@ train_df <- training %>%
 hist(gbear_05_preds$reg_05_pred_class)
 hist(gbear_05_preds$knn_05_pred_class)
 hist(gbear_05_preds$rf_05_pred_class)
-hist(train_df$Value_Orientation)
+hist(train_df$value)
 
 t05_reg <- data.frame(
   type = "regression",
@@ -160,17 +160,18 @@ gbear_05_time %>%
   geom_line(aes(color = as.factor(reg_05_pred_class)))+ 
   scale_color_met_d("Derain")
 
+
 gbear_05_time %>% 
-  group_by(year, reg_05_pred_class) %>%
+  group_by(year, knn_05_pred_class) %>%
   summarise(count = n()) %>%
-  ggplot(., aes(x = year, y = count, fill = as.factor(reg_05_pred_class))) + 
+  ggplot(., aes(x = year, y = count, fill = as.factor(knn_05_pred_class))) + 
   geom_area() + 
   scale_fill_met_d("Derain") + 
   labs(title = "Number of Grizzly Bear Articles", 
-       subtitle = "Multinomial Regression Model\n(gamma threshold = 0.5)",
+       subtitle = "KNN Model\n(gamma threshold = 0.5)",
        x = "Year", y = "Count", 
        fill = "Predicted\nValue Orientation")
-ggsave(here::here(paste0("output/plots/gbear_reg_mod_gt05_year_", 
+ggsave(here::here(paste0("output/plots/gbear_knn_mod_gt05_year_", 
                          Sys.Date(), ".png")),
        height = 10, width = 12, dpi = 300)
 
