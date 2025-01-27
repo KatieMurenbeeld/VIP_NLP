@@ -31,15 +31,103 @@ gbear_pred_map <- gbear_meta_pred %>%
          Pub_city = `Publisher City`)
            # Pub_city = `Publisher City`)
 
-count_test <- gbear_meta_pred %>% 
-  group_by(`Publication Title`, reg_05_pred_class, year) %>%
-  summarise(count = n())
+#count_test <- gbear_meta_pred %>% 
+#  group_by(`Publication Title`, reg_05_pred_class, year) %>%
+#  summarise(count = n())
 
-# remove duplicate?
-test <- distinct(gbear_pred_map)
-
-
-test <- left_join(gbear_pred_map, gbear_meta_sel)
-
-
+# Test out the open street mapping
 gbear_pred_map$Country <- "US"
+
+## create testing subsample
+#get a sample of 10
+set.seed(2486)
+test <- sample(nrow(gbear_pred_map),20)
+#data in the sample
+test <- gbear_pred_map[test,]
+
+nrow <- nrow(test)
+counter <- 1
+test$lon[counter] <- 0
+test$lat[counter] <- 0
+while (counter <= nrow){
+  CityName <- gsub(' ','%20',test$Pub_city[counter]) #remove space for URLs
+  CountryCode <- test$Country[counter]
+  url <- paste(
+    "http://nominatim.openstreetmap.org/search?city="
+    , CityName
+    , "&countrycodes="
+    , CountryCode
+    , "&limit=9&format=json"
+    , sep="")
+  x <- fromJSON(url)
+  if(is.vector(x)){
+    test$lon[counter] <- x[[1]]$lon
+    test$lat[counter] <- x[[1]]$lat    
+  }
+  counter <- counter + 1
+}
+
+library(sf)
+library(ggplot2)
+
+my_sf <- st_as_sf(test, coords = c('lon', 'lat'), crs = "EPSG:4326")
+
+# load tigris shapes
+library(tigris)
+# Download the states
+states <- tigris::states(year = 2023)
+states_proj <- states %>%
+  st_transform("EPSG:4326")
+states_proj <- states_proj %>%
+  filter(as.numeric(GEOID) < 60 & as.numeric(GEOID) != 02 & as.numeric(GEOID) != 15)
+
+#Plot it:
+
+ggplot(my_sf) + 
+  geom_sf(aes(color = reg_05_pred_class))
+
+ggplot() + 
+  geom_sf(data = states_proj, color = NA) +
+  geom_sf(data = my_sf, aes(color = reg_05_pred_class, size = count)) + 
+  theme_bw()
+
+
+## try with full, maybe I could animate but for now pick a few "snapshots"
+nrow <- nrow(gbear_pred_map)
+counter <- 1
+gbear_pred_map$lon[counter] <- 0
+gbear_pred_map$lat[counter] <- 0
+while (counter <= nrow){
+  CityName <- gsub(' ','%20',gbear_pred_map$Pub_city[counter]) #remove space for URLs
+  CountryCode <- gbear_pred_map$Country[counter]
+  url <- paste(
+    "http://nominatim.openstreetmap.org/search?city="
+    , CityName
+    , "&countrycodes="
+    , CountryCode
+    , "&limit=9&format=json"
+    , sep="")
+  x <- fromJSON(url)
+  if(is.vector(x)){
+    gbear_pred_map$lon[counter] <- x[[1]]$lon
+    gbear_pred_map$lat[counter] <- x[[1]]$lat    
+  }
+  counter <- counter + 1
+}
+
+## save as results, the above code takes a minute to run
+write_csv(gbear_pred_map, file = here::here(paste0("data/processed/gbear_preds_publisher_location_", 
+                                                   Sys.Date(), ".csv")))
+
+## should I group by the points? 
+gbear_preds_1990 <- gbear_pred_map %>%
+  filter(year == 1990)
+gbear_preds_2000 <- gbear_pred_map %>%
+  filter(year == 2000)
+gbear_preds_2010 <- gbear_pred_map %>%
+  filter(year == 2010)
+gbear_preds_2020 <- gbear_pred_map %>%
+  filter(year == 2020)
+
+
+
