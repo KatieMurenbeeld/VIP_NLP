@@ -152,7 +152,7 @@ states_proj <- states_proj %>%
 
 #Plot it:
 gbear_reg_1990_map <- ggplot() + 
-  geom_sf(data = states_proj, color = NA) +
+  geom_sf(data = states_proj, color = "black") +
   geom_sf(data = sf_1990, aes(color = as.factor(reg_05_pred_class), size = count, alpha = 0.75)) + 
   scale_alpha(guide = "none") + 
   scale_size(name = "Number of Articles") +
@@ -166,7 +166,7 @@ ggsave(here::here(paste0("output/plots/gbear_reg_mod_gt05_1990_map_",
        gbear_reg_1990_map, height = 10, width = 12, dpi = 300)
 
 gbear_reg_2000_map <- ggplot() + 
-  geom_sf(data = states_proj, color = NA) +
+  geom_sf(data = states_proj, color = "black") +
   geom_sf(data = sf_2000, aes(color = as.factor(reg_05_pred_class), size = count, alpha = 0.75)) + 
   scale_alpha(guide = "none") + 
   scale_size(name = "Number of Articles") +
@@ -180,7 +180,7 @@ ggsave(here::here(paste0("output/plots/gbear_reg_mod_gt05_2000_map_",
        gbear_reg_2000_map, height = 10, width = 12, dpi = 300)
 
 gbear_reg_2010_map <- ggplot() + 
-  geom_sf(data = states_proj, color = NA) +
+  geom_sf(data = states_proj, color = "black") +
   geom_sf(data = sf_2010, aes(color = as.factor(reg_05_pred_class), size = count, alpha = 0.75)) + 
   scale_alpha(guide = "none") + 
   scale_size(name = "Number of Articles") +
@@ -194,7 +194,7 @@ ggsave(here::here(paste0("output/plots/gbear_reg_mod_gt05_2010_map_",
        gbear_reg_2010_map, height = 10, width = 12, dpi = 300)
 
 gbear_reg_2020_map <- ggplot() + 
-  geom_sf(data = states_proj, color = NA) +
+  geom_sf(data = states_proj, color = "black") +
   geom_sf(data = sf_2020, aes(color = as.factor(reg_05_pred_class), size = count, alpha = 0.75)) + 
   scale_alpha(guide = "none") + 
   scale_size(name = "Number of Articles") +
@@ -203,6 +203,7 @@ gbear_reg_2020_map <- ggplot() +
   labs(title = "Number of Grizzly Bear Articles, 2020", 
        subtitle = "Regression Model\n(gamma threshold = 0.5)") +
   theme(legend.position = "bottom")
+gbear_reg_2020_map
 ggsave(here::here(paste0("output/plots/gbear_reg_mod_gt05_2020_map_", 
                          Sys.Date(), ".png")),
        gbear_reg_2020_map, height = 10, width = 12, dpi = 300)
