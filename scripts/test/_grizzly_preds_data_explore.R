@@ -160,12 +160,18 @@ gbear_05_time %>%
   geom_line(aes(color = as.factor(reg_05_pred_class)))+ 
   scale_color_met_d("Derain")
 
-
+vlines <- tibble(word = c("End of Grizzly Hunting", "USFWS Updates Recovery Plan", "Bitterroot Reinto Plan",
+                   "Yellowstone Delisting", "Relisted", "Protection Stays", 
+                   "MT ranch conflicts", "Wash Reintroduction", "Yellowstone Delist 2.0"), 
+                 years = c(1991, 1993, 2000, 
+                   2007, 2009, 2011,
+                   2013, 2015, 2017))
 gbear_05_time %>% 
   group_by(year, knn_05_pred_class) %>%
   summarise(count = n()) %>%
   ggplot(., aes(x = year, y = count, fill = as.factor(knn_05_pred_class))) + 
   geom_area() + 
+  geom_vline(data = vlines, aes(xintercept = years, group = word)) + 
   scale_fill_met_d("Derain") + 
   labs(title = "Number of Grizzly Bear Articles", 
        subtitle = "KNN Model\n(gamma threshold = 0.5)",
