@@ -1,6 +1,7 @@
 library(tidyverse)
 library(readxl)
 library(RJSONIO)
+library(MetBrewer)
 
 #---Load the data set----
 gbear_meta <- read_csv(here::here("data/original/metadata_w_coverage_type_gamma_0.5.csv"))
@@ -119,6 +120,8 @@ while (counter <= nrow){
 write_csv(gbear_pred_map, file = here::here(paste0("data/processed/gbear_preds_publisher_location_", 
                                                    Sys.Date(), ".csv")))
 
+gbear_pred_map <- read_csv(here::here("data/processed/gbear_preds_publisher_location_2025-01-27.csv"))
+
 ## should I group by the points? 
 gbear_preds_1990 <- gbear_pred_map %>%
   filter(year == 1990)
@@ -130,4 +133,76 @@ gbear_preds_2020 <- gbear_pred_map %>%
   filter(year == 2020)
 
 
+library(sf)
+library(ggplot2)
 
+sf_1990 <- st_as_sf(gbear_preds_1990, coords = c('lon', 'lat'), crs = "EPSG:4326")
+sf_2000 <- st_as_sf(gbear_preds_2000, coords = c('lon', 'lat'), crs = "EPSG:4326")
+sf_2010 <- st_as_sf(gbear_preds_2010, coords = c('lon', 'lat'), crs = "EPSG:4326")
+sf_2020 <- st_as_sf(gbear_preds_2020, coords = c('lon', 'lat'), crs = "EPSG:4326")
+
+# load tigris shapes
+library(tigris)
+# Download the states
+states <- tigris::states(year = 2023)
+states_proj <- states %>%
+  st_transform("EPSG:4326")
+states_proj <- states_proj %>%
+  filter(as.numeric(GEOID) < 60 & as.numeric(GEOID) != 02 & as.numeric(GEOID) != 15)
+
+#Plot it:
+gbear_reg_1990_map <- ggplot() + 
+  geom_sf(data = states_proj, color = NA) +
+  geom_sf(data = sf_1990, aes(color = as.factor(reg_05_pred_class), size = count, alpha = 0.75)) + 
+  scale_alpha(guide = "none") + 
+  scale_size(name = "Number of Articles") +
+  scale_color_met_d("Derain") +
+  guides(color=guide_legend(title="Predicted Value Orientation")) +
+  labs(title = "Number of Grizzly Bear Articles, 1990", 
+       subtitle = "Regression Model\n(gamma threshold = 0.5)") +
+  theme(legend.position = "bottom")
+ggsave(here::here(paste0("output/plots/gbear_reg_mod_gt05_1990_map_", 
+                         Sys.Date(), ".png")),
+       gbear_reg_1990_map, height = 10, width = 12, dpi = 300)
+
+gbear_reg_2000_map <- ggplot() + 
+  geom_sf(data = states_proj, color = NA) +
+  geom_sf(data = sf_2000, aes(color = as.factor(reg_05_pred_class), size = count, alpha = 0.75)) + 
+  scale_alpha(guide = "none") + 
+  scale_size(name = "Number of Articles") +
+  scale_color_met_d("Derain") +
+  guides(color=guide_legend(title="Predicted Value Orientation")) +
+  labs(title = "Number of Grizzly Bear Articles, 2000", 
+       subtitle = "Regression Model\n(gamma threshold = 0.5)") +
+  theme(legend.position = "bottom")
+ggsave(here::here(paste0("output/plots/gbear_reg_mod_gt05_2000_map_", 
+                         Sys.Date(), ".png")),
+       gbear_reg_2000_map, height = 10, width = 12, dpi = 300)
+
+gbear_reg_2010_map <- ggplot() + 
+  geom_sf(data = states_proj, color = NA) +
+  geom_sf(data = sf_2010, aes(color = as.factor(reg_05_pred_class), size = count, alpha = 0.75)) + 
+  scale_alpha(guide = "none") + 
+  scale_size(name = "Number of Articles") +
+  scale_color_met_d("Derain") +
+  guides(color=guide_legend(title="Predicted Value Orientation")) +
+  labs(title = "Number of Grizzly Bear Articles, 2010", 
+       subtitle = "Regression Model\n(gamma threshold = 0.5)") +
+  theme(legend.position = "bottom")
+ggsave(here::here(paste0("output/plots/gbear_reg_mod_gt05_2010_map_", 
+                         Sys.Date(), ".png")),
+       gbear_reg_2010_map, height = 10, width = 12, dpi = 300)
+
+gbear_reg_2020_map <- ggplot() + 
+  geom_sf(data = states_proj, color = NA) +
+  geom_sf(data = sf_2020, aes(color = as.factor(reg_05_pred_class), size = count, alpha = 0.75)) + 
+  scale_alpha(guide = "none") + 
+  scale_size(name = "Number of Articles") +
+  scale_color_met_d("Derain") +
+  guides(color=guide_legend(title="Predicted Value Orientation")) +
+  labs(title = "Number of Grizzly Bear Articles, 2020", 
+       subtitle = "Regression Model\n(gamma threshold = 0.5)") +
+  theme(legend.position = "bottom")
+ggsave(here::here(paste0("output/plots/gbear_reg_mod_gt05_2020_map_", 
+                         Sys.Date(), ".png")),
+       gbear_reg_2020_map, height = 10, width = 12, dpi = 300)
