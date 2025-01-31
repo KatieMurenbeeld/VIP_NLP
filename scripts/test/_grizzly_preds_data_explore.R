@@ -181,4 +181,73 @@ ggsave(here::here(paste0("output/plots/gbear_knn_mod_gt05_year_",
                          Sys.Date(), ".png")),
        height = 10, width = 12, dpi = 300)
 
+# what about "confusion matrices" between the different models?
+
+reg_pred_counts <- t05_reg %>%
+  group_by(as.factor(value)) %>%
+  summarise(count_reg = n())
+
+knn_pred_counts <- t05_knn %>%
+  group_by(as.factor(value)) %>%
+  summarise(count_knn = n())
+
+rf_pred_counts <- t05_rf %>%
+  group_by(as.factor(value)) %>%
+  summarise(count_rf = n())
+
+test <- left_join(reg_pred_counts, knn_pred_counts)
+
+reg_value <- as.factor(t05_reg$value)
+knn_value <- as.factor(t05_knn$value)
+rf_value <- as.factor(t05_rf$value)
+
+library(caret)
+#Creating confusion matrix
+reg_knn <- confusionMatrix(data=reg_value, reference = knn_value)
+reg_knn_table <- reg_knn$table
+reg_knn_df <- as.data.frame(reg_knn_table)
+reg_knn_df <- reg_knn_df %>%
+  rename(reg_preds = Prediction) %>%
+  rename(knn_preds = Reference) %>%
+  rename(counts = Freq)
+
+plot <- ggplot(reg_knn_df)
+plot + 
+  geom_tile(aes(x=reg_preds, y=knn_preds, fill=counts)) +
+  geom_text(aes(x = reg_preds, y = knn_preds, label = round(counts)), size = 2.5)+
+  scale_x_discrete(name="Knn Predicted Class") + 
+  scale_y_discrete(name="Reg. Predicted Class") +
+  scale_fill_gradient(low = "white", high = "grey1")
+
+rf_reg <- confusionMatrix(data=rf_value, reference = reg_value)
+rf_reg_table <- rf_reg$table
+rf_reg_df <- as.data.frame(rf_reg_table)
+rf_reg_df <- rf_reg_df %>%
+  rename(reg_preds = Reference) %>%
+  rename(rf_preds = Prediction) %>%
+  rename(counts = Freq)
+
+plot <- ggplot(rf_reg_df)
+plot + 
+  geom_tile(aes(x = rf_preds, y = reg_preds, fill = counts)) +
+  geom_text(aes(x = rf_preds, y = reg_preds, label = round(counts)), size = 2.5)+
+  scale_x_discrete(name="Random Forest Predicted Class") + 
+  scale_y_discrete(name="Reg. Predicted Class") +
+  scale_fill_gradient(low = "white", high = "grey1")
+
+rf_knn <- confusionMatrix(data=rf_value, reference = knn_value)
+rf_knn_table <- rf_knn$table
+rf_knn_df <- as.data.frame(rf_knn_table)
+rf_knn_df <- rf_knn_df %>%
+  rename(knn_preds = Reference) %>%
+  rename(rf_preds = Prediction) %>%
+  rename(counts = Freq)
+
+plot <- ggplot(rf_knn_df)
+plot + 
+  geom_tile(aes(x = rf_preds, y = knn_preds, fill=counts)) +
+  geom_text(aes(x = rf_preds, y = knn_preds, label = round(counts)), size = 2.5)+
+  scale_x_discrete(name="Random Forest Predicted Class") + 
+  scale_y_discrete(name="KNN Predicted Class") +
+  scale_fill_gradient(low = "white", high = "grey1")
 
