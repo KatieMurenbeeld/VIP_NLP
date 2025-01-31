@@ -2,10 +2,25 @@ library(tidyverse)
 library(readxl)
 library(RJSONIO)
 library(MetBrewer)
+library(googledrive)
+options(
+  gargle_oauth_cache = ".secrets",
+  gargle_oauth_email = TRUE
+)
 
 #---Load the data set----
 gbear_meta <- read_csv(here::here("data/original/metadata_w_coverage_type_gamma_0.5.csv"))
 gbear_05_preds <- read_csv(here::here("output/predictions/grizzly_bear_05_preds_gamma.csv"))
+
+# Load the google sheet with the updated publication locations
+#folder_url <- "https://drive.google.com/drive/folders/1ob5sagTtT3svhc7ZKeemd9TiAq1_MsCL"
+#folder <- drive_get(as_id(folder_url))
+
+#gdrive_files <- drive_ls(folder)
+#id <- gdrive_files[gdrive_files$name == "James Edited Values", ]$id
+#drive_download(id, path = "data/original/james_edited_values_coding.csv", overwrite = TRUE)
+
+pub_loc <- read_csv(file = here::here("data/original/publication_info_gamma_0.5_2025_01_31.csv"))
 
 #---Select the data and add a Country column and fill with "US"
 ## group by publication and year with a count of articles for year
@@ -17,13 +32,14 @@ gbear_meta <- gbear_meta %>%
          month = month(Date))
 
 gbear_meta_sel <- gbear_meta %>%
-  dplyr::select(GOID, `Publication Title`, `Publisher City`, `Publisher Province`, Date, year, month)
+  dplyr::select(GOID, `Publication Title`, `Publication ID`, `Publisher City`, `Publisher Province`, Date, year, month)
 
 ## combine with the predicted data GOID = Article ID?
 gbear_preds <- gbear_05_preds %>%
   dplyr::select(Article_ID, reg_05_pred_class, knn_05_pred_class, rf_05_pred_class)
 
 gbear_meta_pred <- left_join(gbear_preds, gbear_meta_sel, by = c("Article_ID" = "GOID"))
+gbear_meta_pred <- left_join(gbear_meta_pred, pub_loc, by = "Publication ID")
 
 gbear_pred_map <- gbear_meta_pred %>% 
   select(`Publication Title`, reg_05_pred_class, year, `Publisher City`) %>%
@@ -31,6 +47,11 @@ gbear_pred_map <- gbear_meta_pred %>%
   mutate(count = n(),
          Pub_city = `Publisher City`)
            # Pub_city = `Publisher City`)
+
+pub_loc_sel <- pub_loc %>%
+  dplyr::select(`Publication ID`, `Publication Title`, `Publisher Name`, `Publisher City`, Notes)
+
+
 
 #count_test <- gbear_meta_pred %>% 
 #  group_by(`Publication Title`, reg_05_pred_class, year) %>%
