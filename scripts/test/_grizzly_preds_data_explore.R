@@ -6,10 +6,15 @@ library(MetBrewer)
 
 
 #---Load the data----
-gbear_05_preds <- read_csv(here::here("output/predictions/grizzly_bear_05_preds_gamma.csv"))
-gbear_055_preds <- read_csv(here::here("output/predictions/grizzly_bear_055_preds_gamma.csv"))
-gbear_06_preds <- read_csv(here::here("output/predictions/grizzly_bear_06_preds_gamma.csv"))
-gbear_065_preds <- read_csv(here::here("output/predictions/grizzly_bear_065_preds_gamma.csv"))
+#gbear_05_preds <- read_csv(here::here("output/predictions/grizzly_bear_05_preds_gamma.csv"))
+#gbear_055_preds <- read_csv(here::here("output/predictions/grizzly_bear_055_preds_gamma.csv"))
+#gbear_06_preds <- read_csv(here::here("output/predictions/grizzly_bear_06_preds_gamma.csv"))
+#gbear_065_preds <- read_csv(here::here("output/predictions/grizzly_bear_065_preds_gamma.csv"))
+
+gbear_05_preds <- read_csv(here::here("output/predictions/grizzly_bear_05_preds_gamma_2025-01-31.csv"))
+gbear_055_preds <- read_csv(here::here("output/predictions/grizzly_bear_055_preds_gamma_2025-01-31.csv"))
+gbear_06_preds <- read_csv(here::here("output/predictions/grizzly_bear_06_preds_gamma_2025-01-31.csv"))
+gbear_065_preds <- read_csv(here::here("output/predictions/grizzly_bear_065_preds_gamma_2025-01-31.csv"))
 
 training <- read_csv(here::here("data/processed/clean_text_2024-09-16.csv"))
 
@@ -118,7 +123,7 @@ test_hist <- data_all %>%
   facet_grid(gamma_thres ~ type) + 
   labs(fill="")
 test_hist
-ggsave(here::here(paste0("output/plots/test_gamma_thres_pred_value_orientation_", 
+ggsave(here::here(paste0("output/plots/test_gamma_thres_pred_value_orientation_jan_2025_corpus_", 
                          Sys.Date(), ".png")), 
        height = 12, width = 12, dpi = 300)
 
@@ -156,9 +161,47 @@ gbear_05_time %>%
 gbear_05_time %>% 
   group_by(year, reg_05_pred_class) %>%
   summarise(count = n()) %>%
-  ggplot(., aes(x = year, y = count)) + 
+  ggplot(., aes(x = year, y = count, alpha = as.factor(reg_05_pred_class))) + 
   geom_line(aes(color = as.factor(reg_05_pred_class)))+ 
-  scale_color_met_d("Derain")
+  scale_color_met_d("Derain")+
+  scale_alpha_manual(values = c("1" = 1.0, "2" = 1.0, "3" = 0.3, "4" = 0.3, "5" = 0.3, "6" = 1.0, "7" = 1.0)) +
+  labs(title = "Number of Grizzly Bear Articles", 
+       subtitle = "Reg Model\n(gamma threshold = 0.5)",
+       x = "Year", y = "Count", 
+       fill = "Predicted\nValue Orientation")
+ggsave(here::here(paste0("output/plots/gbear_reg_mod_gt05_year_test_jan_2025_corpus_", 
+                         Sys.Date(), ".png")),
+       height = 12, width = 12, dpi = 300)
+
+gbear_05_time %>% 
+  group_by(year, knn_05_pred_class) %>%
+  summarise(count = n()) %>%
+  ggplot(., aes(x = year, y = count, alpha = as.factor(knn_05_pred_class))) + 
+  geom_line(aes(color = as.factor(knn_05_pred_class)))+ 
+  scale_color_met_d("Derain") +
+  scale_alpha_manual(values = c("1" = 1.0, "2" = 1.0, "3" = 0.3, "4" = 0.3, "5" = 0.3, "6" = 1.0, "7" = 1.0)) +
+  labs(title = "Number of Grizzly Bear Articles", 
+       subtitle = "KNN Model\n(gamma threshold = 0.5)",
+       x = "Year", y = "Count", 
+       fill = "Predicted\nValue Orientation")
+ggsave(here::here(paste0("output/plots/gbear_knn_mod_gt05_year_test_jan_2025_corpus_", 
+                         Sys.Date(), ".png")),
+       height = 12, width = 12, dpi = 300)
+
+gbear_05_time %>% 
+  group_by(year, rf_05_pred_class) %>%
+  summarise(count = n()) %>%
+  ggplot(., aes(x = year, y = count, alpha = as.factor(rf_05_pred_class))) + 
+  geom_line(aes(color = as.factor(rf_05_pred_class)))+ 
+  scale_color_met_d("Derain") +
+  scale_alpha_manual(values = c("1" = 1.0, "2" = 1.0, "3" = 0.3, "4" = 0.3, "5" = 0.3, "6" = 1.0, "7" = 1.0)) +
+  labs(title = "Number of Grizzly Bear Articles", 
+       subtitle = "Random Forest Model\n(gamma threshold = 0.5)",
+       x = "Year", y = "Count", 
+       fill = "Predicted\nValue Orientation")
+ggsave(here::here(paste0("output/plots/gbear_rf_mod_gt05_year_test_jan_2025_corpus_", 
+                         Sys.Date(), ".png")),
+       height = 12, width = 12, dpi = 300)
 
 vlines <- tibble(word = c("End of Grizzly Hunting", "USFWS Updates Recovery Plan", "Bitterroot Reinto Plan",
                    "Yellowstone Delisting", "Relisted", "Protection Stays", 
