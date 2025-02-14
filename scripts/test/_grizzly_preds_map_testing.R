@@ -21,6 +21,7 @@ gbear_05_preds <- read_csv(here::here("output/predictions/grizzly_bear_05_preds_
 #drive_download(id, path = "data/original/james_edited_values_coding.csv", overwrite = TRUE)
 
 pub_loc <- read_csv(file = here::here("data/original/publication_info_gamma_0.5_2025_01_31.csv"))
+pub_loc_dup <- pub_loc[!duplicated(pub_loc$`Publication ID`),]
 
 #---Select the data and add a Country column and fill with "US"
 ## group by publication and year with a count of articles for year
@@ -39,17 +40,18 @@ gbear_preds <- gbear_05_preds %>%
   dplyr::select(Article_ID, reg_05_pred_class, knn_05_pred_class, rf_05_pred_class)
 
 gbear_meta_pred <- left_join(gbear_preds, gbear_meta_sel, by = c("Article_ID" = "GOID"))
-gbear_meta_pred <- left_join(gbear_meta_pred, pub_loc, by = "Publication ID")
+gbear_meta_pred <- left_join(gbear_meta_pred, pub_loc_dup, by = "Publication ID")
 
 gbear_pred_map <- gbear_meta_pred %>% 
-  select(`Publication Title`, reg_05_pred_class, year, `Publisher City`) %>%
-  group_by(`Publication Title`, reg_05_pred_class, year) %>%
+  select(`Publication Title.x`, reg_05_pred_class, year, pub_city, pub_state) %>%
+  group_by(`Publication Title.x`, reg_05_pred_class, year) %>%
   mutate(count = n(),
-         Pub_city = `Publisher City`)
+         Pub_city = pub_city,
+         Pub_state = pub_state)
            # Pub_city = `Publisher City`)
 
-pub_loc_sel <- pub_loc %>%
-  dplyr::select(`Publication ID`, `Publication Title`, `Publisher Name`, `Publisher City`, Notes)
+#pub_loc_sel <- pub_loc %>%
+#  dplyr::select(`Publication ID`, `Publication Title`, `Publisher Name`, `Publisher City`, Notes)
 
 
 
@@ -91,6 +93,7 @@ while (counter <= nrow){
 
 library(sf)
 library(ggplot2)
+library(gganimate)
 
 my_sf <- st_as_sf(test, coords = c('lon', 'lat'), crs = "EPSG:4326")
 
@@ -141,11 +144,11 @@ while (counter <= nrow){
 write_csv(gbear_pred_map, file = here::here(paste0("data/processed/gbear_preds_publisher_location_", 
                                                    Sys.Date(), ".csv")))
 
-gbear_pred_map <- read_csv(here::here("data/processed/gbear_preds_publisher_location_2025-01-27.csv"))
+gbear_pred_map <- read_csv(here::here("data/processed/gbear_preds_publisher_location_2025-02-12.csv"))
 
 ## should I group by the points? 
 gbear_preds_1990 <- gbear_pred_map %>%
-  filter(year == 1990)
+  filter(year <= 1990)
 gbear_preds_2000 <- gbear_pred_map %>%
   filter(year == 2000)
 gbear_preds_2010 <- gbear_pred_map %>%
@@ -153,6 +156,8 @@ gbear_preds_2010 <- gbear_pred_map %>%
 gbear_preds_2020 <- gbear_pred_map %>%
   filter(year == 2020)
 
+gbear_preds <- gbear_pred_map %>%
+  filter(lon != 0)
 
 library(sf)
 library(ggplot2)
@@ -161,6 +166,8 @@ sf_1990 <- st_as_sf(gbear_preds_1990, coords = c('lon', 'lat'), crs = "EPSG:4326
 sf_2000 <- st_as_sf(gbear_preds_2000, coords = c('lon', 'lat'), crs = "EPSG:4326")
 sf_2010 <- st_as_sf(gbear_preds_2010, coords = c('lon', 'lat'), crs = "EPSG:4326")
 sf_2020 <- st_as_sf(gbear_preds_2020, coords = c('lon', 'lat'), crs = "EPSG:4326")
+
+sf_all <- st_as_sf(gbear_preds, coords = c('lon', 'lat'), crs = "EPSG:4326")
 
 # load tigris shapes
 library(tigris)
@@ -182,9 +189,48 @@ gbear_reg_1990_map <- ggplot() +
   labs(title = "Number of Grizzly Bear Articles, 1990", 
        subtitle = "Regression Model\n(gamma threshold = 0.5)") +
   theme(legend.position = "bottom")
+gbear_reg_1990_map
 ggsave(here::here(paste0("output/plots/gbear_reg_mod_gt05_1990_map_", 
                          Sys.Date(), ".png")),
        gbear_reg_1990_map, height = 10, width = 12, dpi = 300)
+
+# test an animation with years <= 1990
+test_anim <- ggplot() + 
+  geom_sf(data = states_proj, color = "black") +
+  geom_sf(data = sf_1990, aes(color = as.factor(reg_05_pred_class), size = count, alpha = 0.75)) + 
+  scale_alpha(guide = "none") + 
+  scale_size(name = "Number of Articles") +
+  scale_color_met_d("Derain") +
+  guides(color=guide_legend(title="Predicted Value Orientation")) +
+  labs(title = "Number of Grizzly Bear Articles: {frame_time}", 
+       subtitle = "Regression Model\n(gamma threshold = 0.5)") + 
+  theme(legend.position = "bottom") +
+  transition_time(year)
+animate(test_anim, nframes = 11, fps = 2)
+
+test_anim_all <- ggplot() + 
+  geom_sf(data = states_proj, color = "black") +
+  geom_sf(data = sf_all, aes(color = as.factor(reg_05_pred_class), size = count, alpha = 0.75)) + 
+  scale_alpha(guide = "none") + 
+  scale_size(name = "Number of Articles") +
+  scale_color_met_d("Derain") +
+  guides(color=guide_legend(title="Predicted Value Orientation")) +
+  labs(title = "Number of Grizzly Bear Articles: {frame_time}", 
+       subtitle = "Regression Model\n(gamma threshold = 0.5)") + 
+  theme(legend.position = "bottom") +
+  transition_time(year)
+animate(test_anim_all, nframes = 45, fps = 2)
+
+anim_save(here::here("output/plots/test_reg_year_animation.gif"), animation = last_animation())
+
+state_map <- ggplot() +
+  geom_sf(data = states_proj, color = "black")
+
+test_anim <- state_map +
+  geom_sf(data = sf_1990, aes(color = as.factor(reg_05_pred_class), size = count, alpha = 0.75)) + 
+  scale_alpha(guide = "none") + 
+  scale_size(name = "Number of Articles") +
+  scale_color_met_d("Derain") +
 
 gbear_reg_2000_map <- ggplot() + 
   geom_sf(data = states_proj, color = "black") +
@@ -196,6 +242,7 @@ gbear_reg_2000_map <- ggplot() +
   labs(title = "Number of Grizzly Bear Articles, 2000", 
        subtitle = "Regression Model\n(gamma threshold = 0.5)") +
   theme(legend.position = "bottom")
+gbear_reg_2000_map
 ggsave(here::here(paste0("output/plots/gbear_reg_mod_gt05_2000_map_", 
                          Sys.Date(), ".png")),
        gbear_reg_2000_map, height = 10, width = 12, dpi = 300)
@@ -210,6 +257,7 @@ gbear_reg_2010_map <- ggplot() +
   labs(title = "Number of Grizzly Bear Articles, 2010", 
        subtitle = "Regression Model\n(gamma threshold = 0.5)") +
   theme(legend.position = "bottom")
+gbear_reg_2010_map
 ggsave(here::here(paste0("output/plots/gbear_reg_mod_gt05_2010_map_", 
                          Sys.Date(), ".png")),
        gbear_reg_2010_map, height = 10, width = 12, dpi = 300)
