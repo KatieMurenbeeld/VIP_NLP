@@ -16,6 +16,11 @@ gbear_055_preds <- read_csv(here::here("output/predictions/grizzly_bear_055_pred
 gbear_06_preds <- read_csv(here::here("output/predictions/grizzly_bear_06_preds_gamma_2025-01-31.csv"))
 gbear_065_preds <- read_csv(here::here("output/predictions/grizzly_bear_065_preds_gamma_2025-01-31.csv"))
 
+gbear_meta <- read_csv(here::here("data/original/metadata_w_coverage_type_gamma_0.5.csv"))
+
+gbear_05_full <- gbear_05_preds %>%
+  left_join(gbear_meta, by = "Title")
+
 training <- read_csv(here::here("data/processed/clean_text_2024-09-16.csv"))
 
 # for the training data drop any rows with NA for Value_Orientation
