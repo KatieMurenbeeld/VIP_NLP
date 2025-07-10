@@ -68,12 +68,12 @@ unlabeled_articles <- unlabeled_articles %>%
 
 # select relevant variables from articles_text_clean
 text2wvo <- articles_text_clean %>%
-  dplyr::select(Article_Text, Value_Orientation)
+  dplyr::select(Article_Text, Value_Orientation, Focus)
 
 ## make Value_Orientation a factor
 text2wvo$Value_Orientation <- as.factor(text2wvo$Value_Orientation)
 
-head(articles_text_clean)
+head(text2wvo)
 ```
 
 Then split the coded data in a training and testing set.
@@ -92,6 +92,9 @@ And create the text "recipe".
 # create the text training recipe (model)
 text_rec <- 
   recipe(Value_Orientation ~ Article_Text, data = text_train)
+
+text_rec_more_var <- 
+  recipe(Value_Orientation ~ Article_Text, Focus, data = text_train)
 ```
 
 Finally, modify the text recipe with several preprocessing steps.
@@ -113,8 +116,14 @@ ii) Set the minimum number of time a token needs to appear to 100
 text_rec_v1 <- text_rec %>%
   step_tokenize(Article_Text) %>%
   step_stopwords(Article_Text) %>%
-  step_tokenfilter(Article_Text, max_tokens = tune(), min_times = 100) %>%
+  #step_tokenfilter(Article_Text, max_tokens = tune(), min_times = 100) %>%
+  step_tokenfilter(Article_Text, max_tokens = 1300) %>%
   step_tfidf(Article_Text)
+```
+
+```{r}
+text_obj <- prep(text_rec_v1)
+baked_data <- bake(text_obj, text_train)
 ```
 
 Set the the resampling methods to save predictions, create the text cross validation folds for parameter tuning, and create a simple tuning grid for finding the optimal number of tokens to retain for training and tuning.
@@ -127,7 +136,7 @@ text_folds <- vfold_cv(text_train)
 # For resamples, save the predictions
 cntrl <- control_resamples(save_pred = TRUE)
 
-# Create a simple tuning grid to find the optimal number of tokens to retain for modle trainig
+# Create a simple tuning grid to find the optimal number of tokens to retain for model trainig
 tokens_tune_grid <- grid_regular(
   max_tokens(range = c(500, 1300)),
   levels = c(max_tokens = 9)
@@ -365,6 +374,10 @@ print("Saved Fitted Knn Model")
 
 Define the tuning grid for the random forest. 
 
+Note to self: Will need to update random forest so that the model returns probabilities not single classification. I think I do that with set_engine("ranger", probability = TRUE).
+
+
+
 ```{r}
 rf_tune_grid <- grid_regular(
   trees(range = c(1000, 5000)), 
@@ -397,7 +410,8 @@ rf_spec <- rand_forest(mtry = 20,
                        trees = tune(),
                        min_n = 4
                        ) %>%
-  set_engine("ranger") %>%
+  #set_engine("ranger") %>%
+  set_engine("ranger", probability = TRUE) %>% # set probability = TRUE
   set_mode("classification")
 
 ## create workflow with tuneable model
