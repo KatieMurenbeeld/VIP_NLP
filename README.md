@@ -1,12 +1,23 @@
 ## Classifying Newspaper Articles for Wildlife Value Orientation :
-### Objective:
+### Objectives:
+Classify a corpus of grizzly bear articles for wildlife value orientations (WVO) in order to:
+- determine if there is a shift in WVO framing similar to Manfredo et al., 2021
+- determine if external pressures on values impact those trends such as
+  - the type of newspaper coverage (local and in bear range, local and not in bear range, "elite" national)
+  - ownership of newspaper (conglomerate or not)
+  - topic (bear attack or not)
+  - time (year, months or years before or after a specific event)
 
 ### Methodology:
+- Supervised classification. Final algorithm to be determined. 
+- Some sort of multilevel or multivariate glm
 
 ### Anticipated Results:
+- Time series showing the % mutual newspapers through year for the different newspaper types
+- 
 
 ## Installation Instructions:
-Running this code requires the following libraries.
+*Running this code requires the following libraries.*
 
 ## Usage Instructions:
 **Note:** These usage instructions are for testing. This project is in progress, so there are still many testing scripts and few final scripts.
