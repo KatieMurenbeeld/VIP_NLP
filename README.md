@@ -39,7 +39,8 @@ Within the `scripts/test` directory are *many* testing and scratch scripts. The 
 
   1. `03_classification.R` the initial model training. However, using this script I could not actually use the trained models to predict unlabeled data. I then switched to using `textrecipes`.
   2. Scripts starting with `_tidymodels_*.R` are the scripts I used to test out the individual classification models using `tidymodels` and `textrecipes`. Once these were tested, I transferred the code in the `model_training_tuning.qmd` quarto doc.
-  3. `_grizzly_preds_local_national_edu.R` Within this script I attempt some visualizations with the resulting WVO predictions on an early version of the corpus using the models trained in the quarto doc. This code is not well commented, but I will continue to update comments and code in this script. 
+  3. `_grizzly_article_classification_tdm.R` is the script with a copy of the code used in the TDM studio to classify the grizzly bear corpus using the trained models. *This code will only work in our group TDM workbench*
+  4. `_grizzly_preds_local_national_edu.R` Within this script I attempt some visualizations with the resulting WVO predictions on an early version of the corpus using the models trained in the quarto doc. This code is not well commented, but I will continue to update comments and code in this script. 
      - The data files `grizzly_bear_05_preds_gamma.csv` contain the article ID, Title, Date, Total_Gamma, reg_05_pred_class, knn_05_pred_class, and rf_05_pred_class. This file was downloaded from the TDM studio where the actualy prediction had to take place. 
 
 **Note:** the `05` in the file and variable name corresponds to a gamma threshold. The gamma value represents the... The `05` is a 0.5 gamma threshold, `055` is a 0.55 gamma threshold, etc.
