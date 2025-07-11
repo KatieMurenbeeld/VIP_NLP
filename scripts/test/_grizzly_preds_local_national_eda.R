@@ -5,7 +5,10 @@ library(dplyr)
 library(MetBrewer)
 
 
-#---Load the data----
+# Load the data
+#----
+
+## Load the grizzly corpus predictions
 gbear_05_preds <- read_csv(here::here("output/predictions/grizzly_bear_05_preds_gamma.csv"))
 #gbear_055_preds <- read_csv(here::here("output/predictions/grizzly_bear_055_preds_gamma.csv"))
 #gbear_06_preds <- read_csv(here::here("output/predictions/grizzly_bear_06_preds_gamma.csv"))
@@ -13,16 +16,21 @@ gbear_05_preds <- read_csv(here::here("output/predictions/grizzly_bear_05_preds_
 
 #gbear_05_preds <- read_csv(here::here("output/predictions/grizzly_bear_05_preds_gamma_2025-01-31.csv"))
 
+## Load the meta data (this is on our SPASES google drive)
 gbear_meta <- read_csv(here::here("data/original/metadata_w_coverage_type_gamma_0.5.csv"))
 
+### join the prediction and meta data
 #gbear_05 <- left_join(gbear_meta, gbear_05_preds, by = c("GOID" = "Article_ID"))
 gbear_05 <- left_join(gbear_05_preds, gbear_meta, by = c("Article_ID" = "GOID"))
 
+## Load the newspaper location data (this is on our SPASES google drive)
 pub_loc <- read_csv(file = here::here("data/original/publication_info_gamma_0.5_2025_01_31.csv"))
-pub_loc_dup <- pub_loc[!duplicated(pub_loc$`Publication ID`),]
+pub_loc_dup <- pub_loc[!duplicated(pub_loc$`Publication ID`),] # remove duplicates
 
+### Join predition+meta data and the location data
 gbear_05_full <- left_join(gbear_05, pub_loc_dup, by = "Publication ID")
 
+## Load the training data (not sure I actually use this)
 training <- read_csv(here::here("data/processed/clean_text_2024-09-16.csv"))
 
 # for the training data drop any rows with NA for Value_Orientation
@@ -32,51 +40,54 @@ train_df <- training %>%
   dplyr::select(type, Value_Orientation) %>%
   rename("value" = "Value_Orientation")
 
-# predicted classification through time
-gbear_05_time <- gbear_05_full %>%
+# Start looking at the predicted classification through time
+#----
+
+gbear_05_time <- gbear_05_full %>% # select relevant variables
   dplyr::select(Date.x, `Publication Title.x`, `Coverage Type.x`, pub_city, pub_state, reg_05_pred_class, knn_05_pred_class, rf_05_pred_class) %>%
   mutate(gamma_thres = "gamma thres = 0.5")
 
 
-gbear_05_time$Date.x <- as.Date(gbear_05_time$Date.x) 
+gbear_05_time$Date.x <- as.Date(gbear_05_time$Date.x) # make the date datetime
 
-gbear_05_time <- gbear_05_time %>%
+gbear_05_time <- gbear_05_time %>% # add columns for the month, year, and month-year
   mutate(year = year(Date.x), 
          month = month(Date.x),
          month_yr = format(as.Date(Date.x), "%Y-%m"))
 
-gbear_05_time$month_yr <- as.Date(paste(gbear_05_time$month_yr, "-01", sep=""))
+gbear_05_time$month_yr <- as.Date(paste(gbear_05_time$month_yr, "-01", sep="")) # this needs to be in yr-mn-day for some reason so I just paste on a -01
 
-gbear_05_time %>% 
+gbear_05_time %>% # group by the year and coverage type and get the number of article by coverage type per year
   group_by(year, `Coverage Type.x`) %>%
   summarise(count = n()) %>%
   ggplot(., aes(x = year, y = count, color = `Coverage Type.x`)) + 
   geom_line()
 
-gbear_05_time %>% 
+gbear_05_time %>% # group by the month and coverage type and get the number of article by coverage type per month
   #filter(year > 2020) %>%
   group_by(month_yr, `Coverage Type.x`) %>%
   summarise(count = n()) %>%
   ggplot(., aes(x = as.Date(month_yr), y = count, color = `Coverage Type.x`)) + 
   geom_line() 
 
-gbear_nat <- gbear_05_time %>%
+gbear_nat <- gbear_05_time %>% # create a national subset
   filter(`Coverage Type.x` == "national")
 
-gbear_grange <- gbear_05_time %>%
+gbear_grange <- gbear_05_time %>% # create a local and in grizzly range subset
   filter(`Coverage Type.x` == "local") %>%
   filter(pub_state %in% c("WA", "WY", "ID", "MT", "CO", "OR", "CA"))
 
-gbear_sub <- rbind(gbear_nat, gbear_grange)
+gbear_sub <- rbind(gbear_nat, gbear_grange) # combine the national and local+range subsets
 
+## make some quick plots
 gbear_sub %>% 
-  group_by(month_yr, `Coverage Type.x`) %>%
+  group_by(month_yr, `Coverage Type.x`) %>% # group by the month and coverage type and get the number of article by coverage type per month
   summarise(count = n()) %>%
   ggplot(., aes(x = as.Date(month_yr), y = count, color = `Coverage Type.x`)) + 
   geom_line()
 
 gbear_sub %>% 
-  group_by(year, `Coverage Type.x`) %>%
+  group_by(year, `Coverage Type.x`) %>% # group by the year and coverage type and get the number of article by coverage type per year
   summarise(count = n()) %>%
   ggplot(., aes(x = year, y = count, color = `Coverage Type.x`)) + 
   geom_line()
@@ -100,18 +111,18 @@ gbear_sub %>%
        fill = "Predicted\nValue Orientation") +
   facet_wrap(~`Coverage Type.x`)
 
-year_type_pred <- gbear_sub %>% 
+year_type_pred <- gbear_sub %>% # group by year, WVO, and coverage type - get the number of articles of class per year
   group_by(year, reg_05_pred_class, `Coverage Type.x`) %>%
   summarise(count = n())
 
-test <- gbear_sub %>% 
+test <- gbear_sub %>% # try to get the coverage type as a percentage by year
   add_count(year, `Coverage Type.x`) %>% 
   add_count(year, name = 'year_n') %>% 
   group_by(year, `Coverage Type.x`) %>%
   summarise(count_percentage = first(n)/first(year_n)) %>% 
   mutate(count_percentage = scales::percent(count_percentage))
 
-test_2 <- gbear_sub %>% 
+test_2 <- gbear_sub %>% # try to get the number of mutualism (WVO = 6, 7) as a percentage by year
   filter(`Coverage Type.x` == "national") %>%
   add_count(year, reg_05_pred_class) %>% 
   add_count(year, name = 'year_n') %>% 
@@ -121,7 +132,7 @@ test_2 <- gbear_sub %>%
                                      0)) %>% 
   mutate(dom_percentage = scales::percent(dom_percentage))
 
-test_3 <- gbear_sub %>% 
+test_3 <- gbear_sub %>% # not sure what I was trying to do here
   filter(`Coverage Type.x` == "local") %>%
   add_count(year, reg_05_pred_class) %>% 
   add_count(year, name = 'year_n') %>% 
@@ -160,7 +171,8 @@ gbear_05_time %>%
        x = "Year", y = "Count", 
        fill = "Predicted\nValue Orientation") 
 
-
+## Here I try to get the % of mutual, neutral, domination articles by year
+## on the full dataset and the "sub" dataset with only the national+local in range articles
 
 gbear_05_year_pct <- gbear_05_time %>% 
   group_by(year, reg_05_pred_class) %>%
@@ -178,6 +190,7 @@ gbear_sub_year_pct <- gbear_sub %>%
   mutate(pct_neu = (`3` + `4` + `5`) / (`1` + `2` + `3` + `4` + `5` + `6` + `7`) * 100) %>%
   mutate(pct_dom = (`6` + `7`) / (`1` + `2` + `3` + `4` + `5` + `6` + `7`) * 100)
 
+## Here I try to weight the reclassification of the WVO rankings
 gbear_sub_year_pct_test <- gbear_sub %>% 
   group_by(year, reg_05_pred_class, `Coverage Type.x`) %>%
   summarise(count = n()) %>%
@@ -186,6 +199,7 @@ gbear_sub_year_pct_test <- gbear_sub %>%
   mutate(pct_neu = (`3`/2 + `4` + `5`/2) / (`1` + `2` + `3` + `4` + `5` + `6` + `7`) * 100) %>%
   mutate(pct_dom = (`5`/2 + `6` + `7`) / (`1` + `2` + `3` + `4` + `5` + `6` + `7`) * 100)
 
+# Here I calculate the % of each predicted class by year for use in a heat map
 gbear_sub_year_pct_heat <- gbear_sub %>% 
   group_by(year, reg_05_pred_class, `Coverage Type.x`) %>%
   summarise(count = n()) %>%
@@ -198,7 +212,7 @@ gbear_sub_year_pct_heat <- gbear_sub %>%
   mutate(pct_6 = (`6`) / (`1` + `2` + `3` + `4` + `5` + `6` + `7`) * 100) %>%
   mutate(pct_7 = (`7`) / (`1` + `2` + `3` + `4` + `5` + `6` + `7`) * 100)
 
-gbear_05_time %>% 
+gbear_05_time %>% # reshape the data
   group_by(year, reg_05_pred_class) %>%
   summarise(count = n()) %>%
   pivot_wider(names_from = reg_05_pred_class, values_from = count, values_fill = 0)
@@ -213,6 +227,8 @@ gbear_05_time %>%
   geom_line()
  # geom_line(aes(color = as.factor(reg_05_pred_class)))
 
+# simple plots of % mutualism, neutral, or domination articles
+## full dataset
 gbear_05_year_pct %>%
   ggplot(., aes(x = year, y = pct_mut)) +
   geom_line()
@@ -225,6 +241,7 @@ gbear_05_year_pct %>%
   ggplot(., aes(x = year, y = pct_dom)) +
   geom_line()
 
+## subset of data: national+local in range
 gbear_sub_year_pct %>%
   ggplot(., aes(x = year, y = pct_mut)) +
   geom_line()
@@ -237,7 +254,8 @@ gbear_sub_year_pct %>%
   ggplot(., aes(x = year, y = pct_dom)) +
   geom_line()
 
-
+# plots with different segments of time
+## subset of data: national+local in range
 gbear_sub_year_pct_test %>%
   filter(year >= 2000) %>%
   ggplot(., aes(x = year, y = pct_mut)) +
@@ -258,7 +276,6 @@ gbear_sub_year_pct_test %>%
   geom_line() + 
   geom_smooth(method = "lm") + 
   facet_wrap(~`Coverage Type.x`)
-
 
 gbear_sub_year_pct_test %>%
   filter(year >= 2000) %>%
@@ -313,7 +330,7 @@ gbear_sub_year_pct_test %>%
 
 
 # for heat map
-
+## have to reshape the data
 heat_test <- gbear_sub_year_pct_heat %>%
   select(`Coverage Type.x`, year, 10:16) %>%
   pivot_longer(
@@ -323,22 +340,14 @@ heat_test <- gbear_sub_year_pct_heat %>%
   ) %>%
   arrange(year)
 
+## testing a heat map
+## depth of colors in the grid correspond to the % of articles that year with the predicted WVO 
 heat_test %>%
   filter(year >= 1990) %>%
-  ggplot(., aes(wvo_pred, year, fill= pct)) + 
+  ggplot(., aes(year, wvo_pred, fill= pct)) + 
   geom_tile() +
-  scale_y_reverse() +
   scale_fill_gradient(low="white", high="salmon") +
   facet_wrap(~`Coverage Type.x`) + 
   theme_bw()
 
-#----
 
-
-gbear_sub_year_pct_test %>%
-  pivot_longer(
-  cols = new_sp_m014:newrel_f65,
-  names_to = c("diagnosis", "gender", "age"),
-  names_pattern = "new_?(.*)_(.)(.*)",
-  values_to = "count"
-)
