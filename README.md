@@ -53,7 +53,8 @@ Within the home project directory is the `quarto_docs` folder. This contains the
 3. random forest
 
 The trained models were saved as RDS files and uploaded to the TDM server. These models were then used to predict the values of a corpus of grizzly bear articles.
-these predictions were saved as the `grizzly_bear_0*_preds_gamma.csv` files and downloaded from TDM. 
+*See the `_grizzly_article_classification_tdm.R` in the `scripts/test` directory.*
+These predictions were saved as the `grizzly_bear_0*_preds_gamma.csv` files and downloaded from TDM. 
 
 
 
