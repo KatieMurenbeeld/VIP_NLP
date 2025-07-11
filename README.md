@@ -3,7 +3,7 @@
 Classify a corpus of grizzly bear articles for wildlife value orientations (WVO) in order to:
 
 - determine if there is a shift in WVO framing similar to Manfredo et al., 2021
-- determine if external pressures on values impact those trends such as
+- determine if external pressures impact those trends such as
   - the type of newspaper coverage (local and in bear range, local and not in bear range, "elite" national)
   - ownership of newspaper (conglomerate or not)
   - topic (bear attack or not)
