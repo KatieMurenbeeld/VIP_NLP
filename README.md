@@ -51,7 +51,8 @@ Within the home project directory is the `quarto_docs` folder. This contains the
 2. k nearest neighbors
 3. random forest
 
-The trained models were saved as RDS files and uploaded to the TDM server. These models were then used to predict the values of a corpus of grizzly bear articles. 
+The trained models were saved as RDS files and uploaded to the TDM server. These models were then used to predict the values of a corpus of grizzly bear articles.
+these predictions were saved as the `grizzly_bear_0*_preds_gamma.csv` files and downloaded from TDM. 
 
 
 
