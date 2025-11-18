@@ -80,6 +80,9 @@ tokens_tune_grid
 # 7. Create the ordinal forest model
 ## I want to test a few including the ordinalForest and also the rpartScore
 ## There are quite a few ordinal options to try out in the caret package
+## It doesn't seem like parsnip (which goes with tidymodels) has much 
+## in the way of ordinal classification...
+## Not sure how to do this with caret
 #-------------------------------------------------------------------------------
 # create the model 
 ordrf_spec <- ordfor(data = baked_data,
@@ -90,6 +93,31 @@ ordrf_spec <- ordfor(data = baked_data,
                      importance = "rps",
                      perffunction = "probability"
 ) %>%
-  #set_engine("ranger") %>%
-  set_engine("ordinalRF") %>% # set probability = TRUE
+  #set_engine("ranger") %>% # set probability = TRUE
+  set_engine("ordinalRF") %>% 
   set_mode("classification")
+
+##-----Trying this out with just caret------------------------------------------
+fitControl <- trainControl(## 10-fold CV
+  method = "repeatedcv",
+  number = 10,
+  ## repeated ten times
+  repeats = 10)
+
+ordforFit1 <- train(Value_Orientation ~., data = baked_data,
+                    method = "ordinalRF", trControl = fitControl)
+ordforFit1
+
+baked_data_test <- bake(text_obj, text_test)
+
+ordforFit1_preds <- predict(ordforFit1, newdata = baked_data_test)
+ordforFit1_true <- baked_data_test$Value_Orientation
+
+confusionMatrix(data = ordforFit1_preds, reference = ordforFit1_true)
+
+
+# CART
+
+cartFit1 <- train(Value_Orientation ~., data = baked_data,
+                  method = "rpartScore", trControl = fitControl)
+
