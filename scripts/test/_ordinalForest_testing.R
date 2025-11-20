@@ -108,6 +108,8 @@ ordforFit1 <- train(Value_Orientation ~., data = baked_data,
                     method = "ordinalRF", trControl = fitControl)
 ordforFit1
 
+ordforFit1$bestTune
+
 baked_data_test <- bake(text_obj, text_test)
 
 ordforFit1_preds <- predict(ordforFit1, newdata = baked_data_test)
@@ -115,6 +117,14 @@ ordforFit1_true <- baked_data_test$Value_Orientation
 
 confusionMatrix(data = ordforFit1_preds, reference = ordforFit1_true)
 
+# Train the ordinalForest model with only the default values, no tuning
+ordforFit2 <- train(Value_Orientation ~., data = baked_data,
+                    method = "ordinalRF")
+
+ordforFit2_preds <- predict(ordforFit2, newdata = baked_data_test)
+ordforFit2_true <- baked_data_test$Value_Orientation
+
+confusionMatrix(data = ordforFit2_preds, reference = ordforFit2_true)
 
 # CART
 
