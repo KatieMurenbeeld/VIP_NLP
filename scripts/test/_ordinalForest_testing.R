@@ -126,6 +126,85 @@ ordforFit2_true <- baked_data_test$Value_Orientation
 
 confusionMatrix(data = ordforFit2_preds, reference = ordforFit2_true)
 
+data(hearth)
+table(hearth$Class)
+dim(hearth)
+head(hearth)
+
+table(baked_data$Value_Orientation)
+dim(baked_data)
+head(baked_data)
+
+baked_dataframe <- as.data.frame(baked_data)
+head(baked_dataframe)
+
+baked_test_dataframe <- as.data.frame(baked_data_test)
+
+# NOTE: ordfor() does not accept a tibble.
+ordforFit3 <- ordfor(depvar = "Value_Orientation", data = baked_dataframe)
+
+ordforFit3_preds <- predict(ordforFit3, newdata = baked_test_dataframe)
+ordforFit3_predicted <- ordforFit3_preds$ypred
+ordforFit3_true <- baked_data_test$Value_Orientation
+
+confusionMatrix(data = ordforFit3_predicted, reference = ordforFit3_true)
+
+
+# kappa functions from Hornung, 2020
+unweightedkappa <- function(ytrue, yhat) {
+  
+  require("psych")
+  
+  x <- data.frame(ytrue=ytrue, yhat=yhat)
+  
+  cohen.kappa(x)$kappa
+  
+}
+
+linearkappa <- function(ytrue, yhat) {
+  
+  require("psych")
+  
+  x <- data.frame(ytrue=ytrue, yhat=yhat)
+  
+  J <- length(unique(c(x$ytrue, x$yhat)))
+  
+  myw <- matrix(0, ncol = J, nrow = J)
+  myw[] <- abs((col(myw) - row(myw)))
+  myw <- 1 - myw/(J - 1)
+  
+  cohen.kappa(x, w=myw)$weighted.kappa
+  
+}
+
+quadratickappa <- function(ytrue, yhat) {
+  
+  require("psych")
+  
+  x <- data.frame(ytrue=ytrue, yhat=yhat)
+  
+  J <- length(unique(c(x$ytrue, x$yhat)))
+  
+  myw <- matrix(0, ncol = J, nrow = J)
+  myw[] <- abs((col(myw) - row(myw)))^2
+  myw <- 1 - myw/(J - 1)^2
+  
+  cohen.kappa(x, w=myw)$weighted.kappa
+  
+}
+
+fit1_kappa <- unweightedkappa(ordforFit1_true, ordforFit1_preds)
+fit2_kappa <- unweightedkappa(ordforFit2_true, ordforFit2_preds)
+fit3_kappa <- unweightedkappa(ordforFit3_true, ordforFit3_predicted)
+
+fit1_kappalin <- linearkappa(ordforFit1_true, ordforFit1_preds)
+fit2_kappalin <- linearkappa(ordforFit2_true, ordforFit2_preds)
+fit3_kappalin <- linearkappa(ordforFit3_true, ordforFit3_predicted)
+
+fit1_kappaqu <- quadratickappa(ordforFit1_true, ordforFit1_preds)
+fit2_kappaqu <- quadratickappa(ordforFit2_true, ordforFit2_preds)
+fit3_kappaqu <- quadratickappa(ordforFit3_true, ordforFit3_predicted)
+
 # CART
 
 cartFit1 <- train(Value_Orientation ~., data = baked_data,
