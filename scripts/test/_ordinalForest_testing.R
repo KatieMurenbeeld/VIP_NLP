@@ -57,7 +57,7 @@ text_rec_v1 <- text_rec %>%
 
 text_obj <- prep(text_rec_v1)
 baked_data <- bake(text_obj, text_train)
-
+baked_data_test <- bake(text_obj, text_test)
 
 # 5. From the training data split, create the cross validation resampling folds for training/tuning
 #-------------------------------------------------------------------------------
@@ -106,11 +106,13 @@ fitControl <- trainControl(## 10-fold CV
 
 ordforFit1 <- train(Value_Orientation ~., data = baked_data,
                     method = "ordinalRF", trControl = fitControl)
+# save the fit model
+saveRDS(ordforFit1, paste0(here::here("output/ordforFit1_", Sys.Date(), ".RDS")))
+
 ordforFit1
 
 ordforFit1$bestTune
 
-baked_data_test <- bake(text_obj, text_test)
 
 ordforFit1_preds <- predict(ordforFit1, newdata = baked_data_test)
 ordforFit1_true <- baked_data_test$Value_Orientation
@@ -121,27 +123,25 @@ confusionMatrix(data = ordforFit1_preds, reference = ordforFit1_true)
 ordforFit2 <- train(Value_Orientation ~., data = baked_data,
                     method = "ordinalRF")
 
+# save the fit model
+saveRDS(ordforFit2, here::here(paste0("output/ordforFit2_", Sys.Date(), ".RDS")))
+
 ordforFit2_preds <- predict(ordforFit2, newdata = baked_data_test)
 ordforFit2_true <- baked_data_test$Value_Orientation
 
 confusionMatrix(data = ordforFit2_preds, reference = ordforFit2_true)
 
-data(hearth)
-table(hearth$Class)
-dim(hearth)
-head(hearth)
-
-table(baked_data$Value_Orientation)
-dim(baked_data)
-head(baked_data)
-
+# NOTE: ordfor() does not accept a tibble.
+# No training or tuning, just the default parameters
 baked_dataframe <- as.data.frame(baked_data)
 head(baked_dataframe)
 
 baked_test_dataframe <- as.data.frame(baked_data_test)
 
-# NOTE: ordfor() does not accept a tibble.
 ordforFit3 <- ordfor(depvar = "Value_Orientation", data = baked_dataframe)
+
+# save the fit model
+saveRDS(ordforFit3, here::here(paste0("output/ordforFit3_", Sys.Date(), ".RDS")))
 
 ordforFit3_preds <- predict(ordforFit3, newdata = baked_test_dataframe)
 ordforFit3_predicted <- ordforFit3_preds$ypred
