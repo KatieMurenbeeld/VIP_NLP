@@ -17,7 +17,8 @@ library(tm)
 library(caret)
 library(stopwords)
 library(future)
-
+library(doParallel)
+library(foreach)
 
 # 1. Load the data
 #-------------------------------------------------------------------------------
@@ -92,6 +93,7 @@ tokens_tune_grid
 # 7. Random Forest Model (non ordinal)
 #-------------------------------------------------------------------------------
 # For this section we can use tidymodels (parsnip)
+# What parameters do I want to tune?
 
 ## 7.1 Set up a tuning grid
 rf_tune_grid <- grid_regular(
@@ -171,7 +173,17 @@ fitControl <- trainControl(## 10-fold CV
   repeats = 1)
 
 ## 8.1 Only the default parameters. perffunction = default ("equal")
+baked_dataframe <- as.data.frame(baked_data)
+head(baked_dataframe)
+
+baked_test_dataframe <- as.data.frame(baked_data_test)
+
+cl <- makePSOCKcluster(5)
+registerDoParallel(cl)
+
 ordforFitequal <- ordfor(depvar = "Value_Orientation", data = baked_dataframe)
+
+stopCluster(cl)
 
 # save the fit model
 saveRDS(ordforFitequal, here::here(paste0("output/ordforFitequal_", Sys.Date(), ".RDS")))
