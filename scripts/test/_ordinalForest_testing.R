@@ -107,7 +107,7 @@ fitControl <- trainControl(## 10-fold CV
 ordforFit1 <- train(Value_Orientation ~., data = baked_data,
                     method = "ordinalRF", trControl = fitControl)
 # save the fit model
-saveRDS(ordforFit1, paste0(here::here("output/ordforFit1_", Sys.Date(), ".RDS")))
+saveRDS(ordforFit1, here::here(paste0("output/ordforFit1_", Sys.Date(), ".RDS")))
 
 ordforFit1
 
