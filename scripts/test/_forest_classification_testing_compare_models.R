@@ -2,9 +2,10 @@
 # Comparing Non-ordinal and Ordinal Random Forest Classification Models
 # 
 # 1. Load the data and prep/bake/reformat
-# Load the fit models from _forest_classification_testing.R
-# Make predictions using the test data
-# Compare the metrics and confusion matrices
+# 2. Load the fit models from _forest_classification_testing.R
+# 3. Make predictions using the test data
+# 4. Kappa functions from Hornung, 2020
+# 5. Compare the metrics and confusion matrices
 ### need to include the various kappa functions
 #===============================================================================
 
@@ -124,15 +125,142 @@ of_tune_custom <- readRDS(here::here("output/ordforFit_tunecustom_2025-12-10.RDS
 ## I think because of tidymodels I have to use the text_test data and not the 
 ## "baked" data for the rf model since it includes the text processing workflow.
 ## Also, need to get the labels from the test data
+future::plan(future::multisession(workers = 3))
 
 label_test <- as.factor(baked_data_test$Value_Orientation)
 
-#rf_predict <- predict(rf_mod, text_test) 
-rf_cm<- confusionMatrix(rf_predict$.pred_class, label_test, mode = "prec_recall")
+## non-ordinal random forest
+#rf_pred <- predict(rf_mod, text_test) 
+rf_cm <- confusionMatrix(data = rf_predict$.pred_class, 
+                        reference = label_test, 
+                        mode = "everything")
 rf_cm
 
+## ordinal forest, default params, perffunction = equal
 of_def_pred <- predict(of_def, baked_test_dataframe)
-of_def_pred_predicted <- of_def_pred$ypred
-
-of_def_cm <- confusionMatrix(data = of_def_pred$ypred, reference = label_test)
+of_def_cm <- confusionMatrix(data = of_def_pred$ypred, 
+                             reference = label_test,
+                             mode = "everything")
 of_def_cm
+
+## ordinal forest, default params, perffunction = probability
+of_prob_pred <- predict(of_prob, baked_test_dataframe)
+of_prob_cm <- confusionMatrix(data = of_prob_pred$ypred, 
+                             reference = label_test,
+                             mode = "everything")
+of_prob_cm
+
+## ordinal forest, default params, perffunction = proportional
+of_propor_pred <- predict(of_propor, baked_test_dataframe)
+of_propor_cm <- confusionMatrix(data = of_propor_pred$ypred, 
+                              reference = label_test,
+                              mode = "everything")
+of_propor_cm
+
+## ordinal forest, default params, perffunction = oneclass
+of_oneclass_pred <- predict(of_oneclass, baked_test_dataframe)
+of_oneclass_cm <- confusionMatrix(data = of_oneclass_pred$ypred, 
+                                reference = label_test,
+                                mode = "everything")
+of_oneclass_cm
+
+## ordinal forest, default params, perffunction = custom
+of_custom_pred <- predict(of_custom, baked_test_dataframe)
+of_custom_cm <- confusionMatrix(data = of_custom_pred$ypred, 
+                                  reference = label_test,
+                                  mode = "everything")
+of_custom_cm
+
+## ordinal forest, tuned params, perffunction = equal
+of_tune_def_pred <- predict(of_tune_def, baked_test_dataframe)
+of_tune_def_cm <- confusionMatrix(data = of_tune_def_pred$ypred, 
+                                reference = label_test,
+                                mode = "everything")
+of_tune_def_cm
+
+## ordinal forest, tuned params, perffunction = probability
+of_tune_prob_pred <- predict(of_tune_prob, baked_test_dataframe)
+of_tune_prob_cm <- confusionMatrix(data = of_tune_prob_pred$ypred, 
+                                  reference = label_test,
+                                  mode = "everything")
+of_tune_prob_cm
+
+## ordinal forest, tuned params, perffunction = proportional
+of_tune_propor_pred <- predict(of_tune_propor, baked_test_dataframe)
+of_tune_propor_cm <- confusionMatrix(data = of_tune_propor_pred$ypred, 
+                                   reference = label_test,
+                                   mode = "everything")
+of_tune_propor_cm
+
+## ordinal forest, tuned params, perffunction = oneclass
+of_tune_oneclass_pred <- predict(of_tune_oneclass, baked_test_dataframe)
+of_tune_oneclass_cm <- confusionMatrix(data = of_tune_oneclass_pred$ypred, 
+                                     reference = label_test,
+                                     mode = "everything")
+of_tune_oneclass_cm
+
+## ordinal forest, tuned params, perffunction = custom
+of_tune_custom_pred <- predict(of_tune_custom, baked_test_dataframe)
+of_tune_custom_cm <- confusionMatrix(data = of_tune_custom_pred$ypred, 
+                                       reference = label_test,
+                                       mode = "everything")
+of_tune_custom_cm
+
+
+# create a list of the model predictions
+model_list <- list(of_def_pred, of_prob_pred, of_propor_pred)
+
+#my_list <- list(a = "apple", b = "banana", c = "cherry")
+result_list <- lapply(model_list, function(x) confusionMatrix(data = x$ypred,
+                                                           reference = label_test,
+                                                           mode = "everything"))
+print(result_list[1])
+
+# 5. Kappa functions from Horunung, 2020 
+#-------------------------------------------------------------------------------
+
+unweightedkappa <- function(ytrue, yhat) {
+  
+  require("psych")
+  
+  x <- data.frame(ytrue=ytrue, yhat=yhat)
+  
+  cohen.kappa(x)$kappa
+  
+}
+
+linearkappa <- function(ytrue, yhat) {
+  
+  require("psych")
+  
+  x <- data.frame(ytrue=ytrue, yhat=yhat)
+  
+  J <- length(unique(c(x$ytrue, x$yhat)))
+  
+  myw <- matrix(0, ncol = J, nrow = J)
+  myw[] <- abs((col(myw) - row(myw)))
+  myw <- 1 - myw/(J - 1)
+  
+  cohen.kappa(x, w=myw)$weighted.kappa
+  
+}
+
+quadratickappa <- function(ytrue, yhat) {
+  
+  require("psych")
+  
+  x <- data.frame(ytrue=ytrue, yhat=yhat)
+  
+  J <- length(unique(c(x$ytrue, x$yhat)))
+  
+  myw <- matrix(0, ncol = J, nrow = J)
+  myw[] <- abs((col(myw) - row(myw)))^2
+  myw <- 1 - myw/(J - 1)^2
+  
+  cohen.kappa(x, w=myw)$weighted.kappa
+  
+}
+
+# 6. Create plots and tables for comparison of the different model results
+#-------------------------------------------------------------------------------
+
