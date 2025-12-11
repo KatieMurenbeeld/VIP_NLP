@@ -112,7 +112,7 @@ label_test <- as.factor(baked_data_test$Value_Orientation)
 ## Because the rf_final_wf model was made with tidymodels you have to use the  
 ## text_test data and not the "baked" test data when predicting.
 
-## Use lapply to create a list of results for each of the one random forest model
+## Use lapply to create a list of results for the one random forest model
 rf_list <- lapply(data_list[11], function(x) { # for the rf_final_wf
   # first, get the predictions
   predictions <- predict(x, text_test)
@@ -137,8 +137,93 @@ result_list <- lapply(data_list[1:10], function(x) { # ignore the rf_final_wf
 # Append the rf_list to the result_list
 result_list <- append(result_list, rf_list)
 
-# 5. Kappa functions from Horunung, 2020 
+# 5. Create heat maps of the confusion matrices to compare the different models
 #-------------------------------------------------------------------------------
+## Create heat maps of the confusion matrix for each tested model
+### Create a function that takes in the model name as an argument
+### Then selects and reshapes the confusion matrix table
+### And plots a heat map of the Reference (true) and Predicted class
+heatmap.func <- function(model) {
+  # Take in the model name
+  x <- melt(result_list[[model]][2]) # reshape the confusion matrix table
+  ggplot(data = x, aes(x = Reference, y = Prediction, fill = value)) +
+    geom_tile(color = "white") +
+    scale_fill_gradient2(low = "white", high = "blue", midpoint = mean(x$value)) +
+    geom_text(aes(label = value), vjust = 0.5, color = "black", size = 4) + # Add text labels
+    scale_y_reverse(breaks = c(1:7)) + # 
+    scale_x_continuous(breaks = c(1:7), position = "top") +
+    labs(x = "Actual Class", y = "Predicted Class", fill = "Count") +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5),  # Center the title
+          panel.grid.major = element_blank(), # Remove major gridlines
+          panel.grid.minor = element_blank(), # Remove minor gridlines
+          legend.position = "None") + # Remove the legend
+    ggtitle(paste(model, "Confusion Matrix")) # Add the model name to the title
+}
+
+## Use a for loop to run through each model name and confusion matrix table
+## within the result_list
+for (i in 1:11) {
+  # print the model name as a check
+  print(names(result_list[i])) 
+  # plot the heat map using the heatmap.func()
+  plot(heatmap.func(names(result_list[i]))) 
+  # save each plot to the output/plots directory
+  ggsave(here::here(paste0("output/plots/", names(result_list[i]), "_confusion_matrix_", 
+                           Sys.Date(), ".jpeg")),
+         height = 5, width = 5, dpi = 300)
+}
+
+
+
+# 6. Combine all accuracy and kappa measures into one table for comparison
+#-------------------------------------------------------------------------------
+# get the overall metrics from the results_list
+# get the by class metrics from the results list
+# probably a bit of reshaping will be required
+# Final table(s) should be:
+# Model Name | Overall Accuracy | Kappa | LW Kappa | QW Kappa | By Class Metrics?
+
+
+## 6.1 Get the overall metrics
+## Create an empty dataframe
+metrics_table <- data.frame(model_name = character(), 
+                            overall_accuracy = numeric(),
+                            kappa = numeric(), 
+                            lw_kappa = numeric(), 
+                            qw_kappa = numeric())
+
+metrics_list <- list()
+
+## Use a for loop to append the metrics to the empty dataframe 
+for (i in 1:11) {
+  # print the model name as a check
+  name <- names(result_list[i])
+  #mod_name <- result_list[name]
+  tmp_df <- as.data.frame(unlist(result_list[[name]][3]))
+  acc <- tmp_df["overall.Accuracy", ]
+  kap <- tmp_df["overall.Kappa", ]
+  lw <- 0
+  qw <- 0
+  
+  new_list <- list(
+    model_name = name,
+    overall_accuracy = acc, 
+    kappa = kap, 
+    lw_kappa = lw, 
+    qw_kappa = qw
+  )
+  
+  # Append the results to the list
+  metrics_list[[i]] <- new_list
+}
+metric_df <- bind_rows(metrics_list)
+
+test_df <- as.data.frame(unlist(result_list[["rf_final_wf"]][3]))
+test_df["overall.Accuracy", ]
+## 6.2 Get the by class metrics
+
+## 6.3 Kappa functions from Horunung, 2020 
 
 unweightedkappa <- function(ytrue, yhat) {
   
@@ -181,46 +266,6 @@ quadratickappa <- function(ytrue, yhat) {
   cohen.kappa(x, w=myw)$weighted.kappa
   
 }
-
-# 6. Create plots and tables for comparison of the different model results
-#-------------------------------------------------------------------------------
-## Create heat maps of the confusion matrix for each tested model
-### Create a function that takes in the model name as an argument
-### Then selects and reshapes the confusion matrix table
-### And plots a heat map of the Reference (true) and Predicted class
-heatmap.func <- function(model) {
-  # Take in the model name
-  x <- melt(result_list[[model]][2]) # reshape the confusion matrix table
-  ggplot(data = x, aes(x = Reference, y = Prediction, fill = value)) +
-    geom_tile(color = "white") +
-    scale_fill_gradient2(low = "white", high = "blue", midpoint = mean(x$value)) +
-    geom_text(aes(label = value), vjust = 0.5, color = "black", size = 4) + # Add text labels
-    scale_y_reverse(breaks = c(1:7)) + # 
-    scale_x_continuous(breaks = c(1:7), position = "top") +
-    labs(x = "Actual Class", y = "Predicted Class", fill = "Count") +
-    theme_minimal() +
-    theme(plot.title = element_text(hjust = 0.5),  # Center the title
-          panel.grid.major = element_blank(), # Remove major gridlines
-          panel.grid.minor = element_blank(), # Remove minor gridlines
-          legend.position = "None") + # Remove the legend
-    ggtitle(paste(model, "Confusion Matrix")) # Add the model name to the title
-}
-
-## Use a for loop to run through each model name and confusion matrix table
-## within the result_list
-for (i in 1:11) {
-  # print the model name as a check
-  print(names(result_list[i])) 
-  # plot the heat map using the heatmap.func()
-  plot(heatmap.func(names(result_list[i]))) 
-  # save each plot to the output/plots directory
-  ggsave(here::here(paste0("output/plots/", names(result_list[i]), "_confusion_matrix_", 
-                           Sys.Date(), ".jpeg")),
-         height = 5, width = 5, dpi = 300)
-}
-
-
-
 
 
 
