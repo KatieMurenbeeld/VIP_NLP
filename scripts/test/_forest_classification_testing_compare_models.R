@@ -237,4 +237,7 @@ for (i in 1:11) {
 # bind the rows of the list created with the for loop into a dataframe
 metric_df <- bind_rows(metrics_list) 
 
+write_csv(metric_df, here::here(paste0("output/forest_models/model_metric_comparisons_",
+                                       Sys.Date(), ".csv")))
+
 ## 6.2 Get the by class metrics?
