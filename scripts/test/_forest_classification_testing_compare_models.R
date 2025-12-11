@@ -116,6 +116,7 @@ label_test <- as.factor(baked_data_test$Value_Orientation)
 rf_list <- lapply(data_list[11], function(x) { # for the rf_final_wf
   # first, get the predictions
   predictions <- predict(x, text_test)
+  preds <- predictions$.pred_class
   # then, generate the confusion matrix
   cm <- confusionMatrix(data = predictions$.pred_class,
                         reference = label_test,
@@ -186,25 +187,41 @@ for (i in 1:11) {
 
 
 ## 6.1 Get the overall metrics
-## Create an empty dataframe
-metrics_table <- data.frame(model_name = character(), 
-                            overall_accuracy = numeric(),
-                            kappa = numeric(), 
-                            lw_kappa = numeric(), 
-                            qw_kappa = numeric())
+### for these kappa functions I need the true data which is baked_data_test$Value_Orientation
+### and the predicted data which is the model_preds$ypreds
 
+rf_preds_list <- lapply(data_list[11], function(x) { # for the rf_final_wf
+  # first, get the predictions
+  predictions <- predict(x, text_test)
+  preds <- predictions$.pred_class
+})
+
+model_preds_list <- lapply(data_list[1:10], function(x) { # for the rf_final_wf
+  # first, get the predictions
+  predictions <- predict(x, baked_test_dataframe)
+  preds <- predictions$ypred
+})
+
+### Append the rf_preds_list to the model_preds_list
+model_preds_list <- append(model_preds_list, rf_preds_list)
+
+## Call the Kappa functions
+source(here::here("functions/hornung_kappas.R"))
+
+## Create an empty list
 metrics_list <- list()
 
 ## Use a for loop to append the metrics to the empty dataframe 
 for (i in 1:11) {
   # print the model name as a check
   name <- names(result_list[i])
-  #mod_name <- result_list[name]
   tmp_df <- as.data.frame(unlist(result_list[[name]][3]))
   acc <- tmp_df["overall.Accuracy", ]
   kap <- tmp_df["overall.Kappa", ]
-  lw <- 0
-  qw <- 0
+  
+  model_pred <- model_preds_list[i]
+  lw <- linearkappa(label_test, model_pred)
+  qw <- quadratickappa(label_test, model_pred)
   
   new_list <- list(
     model_name = name,
@@ -217,55 +234,7 @@ for (i in 1:11) {
   # Append the results to the list
   metrics_list[[i]] <- new_list
 }
-metric_df <- bind_rows(metrics_list)
+# bind the rows of the list created with the for loop into a dataframe
+metric_df <- bind_rows(metrics_list) 
 
-test_df <- as.data.frame(unlist(result_list[["rf_final_wf"]][3]))
-test_df["overall.Accuracy", ]
-## 6.2 Get the by class metrics
-
-## 6.3 Kappa functions from Horunung, 2020 
-
-unweightedkappa <- function(ytrue, yhat) {
-  
-  require("psych")
-  
-  x <- data.frame(ytrue=ytrue, yhat=yhat)
-  
-  cohen.kappa(x)$kappa
-  
-}
-
-linearkappa <- function(ytrue, yhat) {
-  
-  require("psych")
-  
-  x <- data.frame(ytrue=ytrue, yhat=yhat)
-  
-  J <- length(unique(c(x$ytrue, x$yhat)))
-  
-  myw <- matrix(0, ncol = J, nrow = J)
-  myw[] <- abs((col(myw) - row(myw)))
-  myw <- 1 - myw/(J - 1)
-  
-  cohen.kappa(x, w=myw)$weighted.kappa
-  
-}
-
-quadratickappa <- function(ytrue, yhat) {
-  
-  require("psych")
-  
-  x <- data.frame(ytrue=ytrue, yhat=yhat)
-  
-  J <- length(unique(c(x$ytrue, x$yhat)))
-  
-  myw <- matrix(0, ncol = J, nrow = J)
-  myw[] <- abs((col(myw) - row(myw)))^2
-  myw <- 1 - myw/(J - 1)^2
-  
-  cohen.kappa(x, w=myw)$weighted.kappa
-  
-}
-
-
-
+## 6.2 Get the by class metrics?
