@@ -22,6 +22,7 @@ library(stopwords)
 library(future)
 library(doParallel)
 library(foreach)
+library(reshape2)
 
 # 1. Load the data
 #-------------------------------------------------------------------------------
@@ -78,78 +79,52 @@ text_obj <- prep(text_rec_v1)
 baked_data <- bake(text_obj, text_train)
 baked_data_test <- bake(text_obj, text_test)
 
-# 1.4.6. Format the data for use in ordfor
+# 1.4.6. Format the data for use in ordfor which does not accept tibbles
 baked_dataframe <- as.data.frame(baked_data)
 baked_test_dataframe <- as.data.frame(baked_data_test)
 
 # 2. Load the previously fit forest models
 #-------------------------------------------------------------------------------
-## model created with non-ordinal RF, ntrees = 2000
-rf_mod <- readRDS(here::here("output/models/rf_final_wf_2025-12-10.rds"))
 
-## model created with ordinal RF, default params, perffunction = equal
-of_def <- readRDS(here::here("output/ordforFitequal_2025-12-08.RDS"))
+## Get a list of all RDS model file paths in the forest_models directory
+file_paths <- list.files(path = here::here("output/forest_models"),
+                         pattern = "\\.RDS$", full.names = TRUE)
 
-## model created with ordinal RF, default params, perffunction = probability
-of_prob <- readRDS(here::here("output/ordforFitprob_2025-12-08.RDS"))
+## Read each file into a list element using readRDS
+data_list <- lapply(file_paths, readRDS)
 
-## model created with ordinal RF, default params, perffunction = proportional
-of_propor <- readRDS(here::here("output/ordforFitpropor_2025-12-09.RDS"))
+## Get the file names without the paths or the date and extension
+pattern <- "(?<=models/).*?(?=_2025)"
+file_names <- stringr::str_extract(file_paths, pattern)
 
-## model created with ordinal RF, default params, perffunction = oneclass, classimp = 1
-of_oneclass <- readRDS(here::here("output/ordforFitoneclass_2025-12-09.RDS"))
-
-## model created with ordinal RF, default params, perffunction = custom
-## weights = [0.25, 0.1, 0.1, 0.1, 0.1, 0.1, 0.25]
-of_custom <- readRDS(here::here("output/ordforFitcustom_2025-12-09.RDS"))
-
-## model created with ordinal RF, tuned params, perffunction = equal
-of_tune_def <- readRDS(here::here("output/ordforFit_tuneequal_2025-12-10.RDS"))
-
-## model created with ordinal RF, tuned params, perffunction = probability
-of_tune_prob <- readRDS(here::here("output/ordforFit_tuneprob_2025-12-10.RDS"))
-
-## model created with ordinal RF, tuned params, perffunction = proportional
-of_tune_propor <- readRDS(here::here("output/ordforFit_tunepropor_2025-12-10.RDS"))
-
-## model created with ordinal RF, tuned params, perffunction = oneclass, classimp = 1
-of_tune_oneclass <- readRDS(here::here("output/ordforFit_tuneoneclass_2025-12-10.RDS"))
-
-## model created with ordinal RF, tuned params, perffunction = custom, 
-## weights = [0.25, 0.1, 0.1, 0.1, 0.1, 0.1, 0.25]
-of_tune_custom <- readRDS(here::here("output/ordforFit_tunecustom_2025-12-10.RDS"))
+## Assign these names to the list elements
+names(data_list) <- file_names
+#file_names 
 
 # 3. Use the fit models to predict the test data
 #-------------------------------------------------------------------------------
-
-## I think because of tidymodels I have to use the text_test data and not the 
-## "baked" data for the rf model since it includes the text processing workflow.
-## Also, need to get the labels from the test data
+## Set the future::plan to work with multiple cores for speed
 future::plan(future::multisession(workers = 3))
 
+## Create an object with the test data labels
 label_test <- as.factor(baked_data_test$Value_Orientation)
 
-## non-ordinal random forest
-rf_pred <- predict(rf_mod, text_test) 
-rf_cm <- confusionMatrix(data = rf_pred$.pred_class, 
-                        reference = label_test, 
+## Because the rf_final_wf model was made with tidymodels you have to use the  
+## text_test data and not the "baked" test data when predicting.
+
+## Use lapply to create a list of results for each of the one random forest model
+rf_list <- lapply(data_list[11], function(x) { # for the rf_final_wf
+  # first, get the predictions
+  predictions <- predict(x, text_test)
+  # then, generate the confusion matrix
+  cm <- confusionMatrix(data = predictions$.pred_class,
+                        reference = label_test,
                         mode = "everything")
-rf_cm
+})
 
-# create a list of the ordinal forest models
-model_list <- list("of_def" = of_def, 
-                   "of_prob" = of_prob, 
-                   "of_propor" = of_propor,
-                   "of_oneclass" = of_oneclass,
-                   "of_custom" = of_custom,
-                   "of_tune_def" = of_tune_def,
-                   "of_tune_prob" = of_tune_prob, 
-                   "of_tune_propor" = of_tune_propor,
-                   "of_tune_oneclass" = of_tune_oneclass,
-                   "of_tune_custom" = of_tune_custom)
-
-
-result_list <- lapply(model_list, function(x) {
+## The rest of the models can be predicted with the baked_test_dataframe
+## Use lapply to create a list of results for each of the ordinal forest models
+result_list <- lapply(data_list[1:10], function(x) { # ignore the rf_final_wf
   # first, get the predictions
   predictions <- predict(x, baked_test_dataframe)
   # then, generate the confusion matrix
@@ -157,7 +132,10 @@ result_list <- lapply(model_list, function(x) {
                   reference = label_test,
                   mode = "everything")
 })
-print(result_list)
+#print(result_list)
+
+# Append the rf_list to the result_list
+result_list <- append(result_list, rf_list)
 
 # 5. Kappa functions from Horunung, 2020 
 #-------------------------------------------------------------------------------
@@ -206,4 +184,43 @@ quadratickappa <- function(ytrue, yhat) {
 
 # 6. Create plots and tables for comparison of the different model results
 #-------------------------------------------------------------------------------
+## Create heat maps of the confusion matrix for each tested model
+### Create a function that takes in the model name as an argument
+### Then selects and reshapes the confusion matrix table
+### And plots a heat map of the Reference (true) and Predicted class
+heatmap.func <- function(model) {
+  # Take in the model name
+  x <- melt(result_list[[model]][2]) # reshape the confusion matrix table
+  ggplot(data = x, aes(x = Reference, y = Prediction, fill = value)) +
+    geom_tile(color = "white") +
+    scale_fill_gradient2(low = "white", high = "blue", midpoint = mean(x$value)) +
+    geom_text(aes(label = value), vjust = 0.5, color = "black", size = 4) + # Add text labels
+    scale_y_reverse(breaks = c(1:7)) + # 
+    scale_x_continuous(breaks = c(1:7), position = "top") +
+    labs(x = "Actual Class", y = "Predicted Class", fill = "Count") +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5),  # Center the title
+          panel.grid.major = element_blank(), # Remove major gridlines
+          panel.grid.minor = element_blank(), # Remove minor gridlines
+          legend.position = "None") + # Remove the legend
+    ggtitle(paste(model, "Confusion Matrix")) # Add the model name to the title
+}
+
+## Use a for loop to run through each model name and confusion matrix table
+## within the result_list
+for (i in 1:11) {
+  # print the model name as a check
+  print(names(result_list[i])) 
+  # plot the heat map using the heatmap.func()
+  plot(heatmap.func(names(result_list[i]))) 
+  # save each plot to the output/plots directory
+  ggsave(here::here(paste0("output/plots/", names(result_list[i]), "_confusion_matrix_", 
+                           Sys.Date(), ".jpeg")),
+         height = 5, width = 5, dpi = 300)
+}
+
+
+
+
+
 
