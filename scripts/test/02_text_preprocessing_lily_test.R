@@ -1,19 +1,21 @@
 ################################################################################
 # SCRIPT TO CLEAN AND LEMMATIZE TRAINING DATA SET                             ##
-#
-#
-#
-#
-#
+#                                                                             ##
+# 1. Load and join the data sets with the article text and the article labels.## 
+# 2. Cleaning part 1: Remove rows with no text, error messages, or no Value   ##
+#                     orientations.                                           ##
+# 3. Cleaning part 2: Remove stopwords, emails, links, etc. and process       ## 
+#                     abbreviations and possessive forms with custom functions##
+# 4. Create a lemmatization dictionary                                        ##
+# 5. Cleaning part 3: Lemmatize the article text with the lemma dictionary and## 
+#                     final cleaning (abbreviations back to original, trim ws)##
+#                                                                             ##
 ################################################################################
 
 # 0. Load libraries
 #-------------------------------------------------------------------------------
 library(readr)
 library(stringr)
-#library(tidyverse)
-#library(tidytext)
-#library(SnowballC)
 library(qdapDictionaries)
 library(lubridate)
 library(textstem)
@@ -119,7 +121,7 @@ head(final_lemma_dict)
 
 # 5. Clean part 3
 #-------------------------------------------------------------------------------
-
+## Lemmatize the text with the lemma dictionary and final cleaning steps
 df_text_codes_clean3 <- df_text_codes_clean2 %>%
   mutate(
     # Lemmatize text (e.g. "abandoned" -> "abandon")
@@ -133,5 +135,17 @@ df_text_codes_clean3 <- df_text_codes_clean2 %>%
   )
 
 head(df_text_codes_clean3)
+
+# 6. Select the columns of interest and save as csv
+#-------------------------------------------------------------------------------
+## We need the Article Title (Title.x), Publication_State, Source, Species, Focus, 
+## Conflict_Type, Value_Orientation, Article_Text, Published_Date
+df_text_final <- df_text_codes_clean3 %>%
+  select(Title.x, Publication_State, Source, Species, Focus, Conflict_Type, 
+         Value_Orientation, Article_Text, Published_Date)
+
+## save as csv
+write_csv(df_text_final, here::here(paste0("data/processed/clean_text_lemma_", Sys.Date(), ".csv")), 
+          col_names = TRUE)
 
 
