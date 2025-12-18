@@ -28,6 +28,8 @@ library(reshape2)
 #-------------------------------------------------------------------------------
 # Load the cleaned data
 articles_text_clean <- read_csv(here::here("data/processed/clean_text_2024-09-16.csv"))
+## Load the cleaned and lemmatized data
+#articles_text_clean <- read_csv(here::here("data/processed/clean_text_lemma_2025-12-15.csv"))
 
 # drop any rows with NA for Value_Orientation
 articles_text_clean <- articles_text_clean[!is.na(articles_text_clean$Value_Orientation), ]
@@ -69,7 +71,9 @@ text_rec_more_var <-
 # 1.4.1-1.4.4
 text_rec_v1 <- text_rec %>%
   step_tokenize(Article_Text) %>% # Tokenize the article text
-  step_stopwords(Article_Text) %>% # Remove stopwords (from the stopwords library)
+  ## no need to remove stop words if using the lemmatized training data
+  #step_stopwords(Article_Text) %>% # Remove stopwords (from the stopwords library)
+  ## can tune the max number of tokens
   #step_tokenfilter(Article_Text, max_tokens = tune(), min_times = 100) %>%
   step_tokenfilter(Article_Text, max_tokens = 1300) %>% # Set parameters for token filtering
   step_tfidf(Article_Text) #4 Generate a dtm using tf-idf
@@ -88,18 +92,19 @@ baked_test_dataframe <- as.data.frame(baked_data_test)
 
 ## Get a list of all RDS model file paths in the forest_models directory
 file_paths <- list.files(path = here::here("output/forest_models"),
+                         #pattern = ".*lemma.*\\.RDS$", full.names = TRUE)
                          pattern = "\\.RDS$", full.names = TRUE)
 
 ## Read each file into a list element using readRDS
 data_list <- lapply(file_paths, readRDS)
 
 ## Get the file names without the paths or the date and extension
-pattern <- "(?<=models/).*?(?=_2025)"
+pattern <- "(?<=models/).*?(?=.RDS)"
 file_names <- stringr::str_extract(file_paths, pattern)
 
 ## Assign these names to the list elements
 names(data_list) <- file_names
-#file_names 
+file_names 
 
 # 3. Use the fit models to predict the test data
 #-------------------------------------------------------------------------------
@@ -113,7 +118,7 @@ label_test <- as.factor(baked_data_test$Value_Orientation)
 ## text_test data and not the "baked" test data when predicting.
 
 ## Use lapply to create a list of results for the one random forest model
-rf_list <- lapply(data_list[11], function(x) { # for the rf_final_wf
+rf_list <- lapply(data_list[], function(x) { # for the rf_final_wf
   # first, get the predictions
   predictions <- predict(x, text_test)
   preds <- predictions$.pred_class
@@ -125,7 +130,7 @@ rf_list <- lapply(data_list[11], function(x) { # for the rf_final_wf
 
 ## The rest of the models can be predicted with the baked_test_dataframe
 ## Use lapply to create a list of results for each of the ordinal forest models
-result_list <- lapply(data_list[1:10], function(x) { # ignore the rf_final_wf
+result_list <- lapply(data_list[1:25], function(x) { # ignore the rf_final_wf
   # first, get the predictions
   predictions <- predict(x, baked_test_dataframe)
   # then, generate the confusion matrix
