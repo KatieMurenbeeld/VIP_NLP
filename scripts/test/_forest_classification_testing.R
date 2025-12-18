@@ -17,16 +17,20 @@ library(tm)
 library(caret)
 library(stopwords)
 library(future)
-library(doParallel)
-library(foreach)
 
 # 1. Load the data
 #-------------------------------------------------------------------------------
 # Load the cleaned data
-articles_text_clean <- read_csv(here::here("data/processed/clean_text_2024-09-16.csv"))
+#articles_text_clean <- read_csv(here::here("data/processed/clean_text_2024-09-16.csv"))
+articles_text_clean <- read_csv(here::here("data/processed/clean_text_lemma_2025-12-15.csv"))
 
 # drop any rows with NA for Value_Orientation
 articles_text_clean <- articles_text_clean[!is.na(articles_text_clean$Value_Orientation), ]
+## Drop any rows where the text is not available/
+articles_text_clean <- articles_text_clean %>%
+  filter(Article_Text != "Please try again. If the problem persists, contact Customer Service.") %>%
+  filter(Article_Text != "Alerts will be sent when the new results matching your search criteria become available.")
+
 
 # select relevant variables from articles_text_clean
 text2wvo <- articles_text_clean %>%
@@ -62,10 +66,15 @@ text_rec_more_var <-
 
 text_rec_v1 <- text_rec %>%
   step_tokenize(Article_Text) %>%
-  step_stopwords(Article_Text) %>%
+  ## do not need to remove stop words if using the lemmatized data
+  #step_stopwords(Article_Text) %>%
   #step_tokenfilter(Article_Text, max_tokens = tune(), min_times = 100) %>%
-  step_tokenfilter(Article_Text, max_tokens = 1300) %>%
+  step_tokenfilter(Article_Text, max_tokens = 130000) %>%
   step_tfidf(Article_Text)
+
+# Simple clean data has 28577 tokens. Only has remove stopwords in tidymodels text recipe
+# Lemma clean data has 18020 uses qdapDictionaries english and buckley salton 
+# stopwords
 
 text_obj <- prep(text_rec_v1)
 baked_data <- bake(text_obj, text_train)
@@ -118,6 +127,7 @@ rf_tune_wf <- workflow() %>%
   add_model(rf_spec)
 
 ## 7.3 Tune the model
+future::plan(future::multisession(workers = 3))
 set.seed(6891)
 rf_tune_rs <- tune_grid(
   rf_tune_wf,
@@ -134,11 +144,12 @@ rf_best_acc <- rf_tune_rs %>%
 ## 7.4 Create a final workflow with the optimized parameters
 trees_use <- rf_best_acc$trees
 
-rf_spec <- rand_forest(trees = trees_use[1]
-) %>%
+rf_spec <- rand_forest(
+  #trees = trees_use[1]) %>% # for some reason this isn't working
+  trees = 3000) %>%
   set_engine("ranger", probability = TRUE) %>%
   set_mode("classification")
-
+rf_spec
 rf_final_wf <- workflow() %>%
   add_recipe(text_rec_v1) %>%
   add_model(rf_spec)
@@ -159,6 +170,8 @@ rf_final_wf <- rf_final_fitted %>%
 
 write_rds(rf_final_wf, file = here::here(paste0("output/forest_models/rf_final_wf_",
                                                 Sys.Date(), ".rds")))
+#write_rds(rf_final_wf, file = here::here(paste0("output/forest_models/rf_final_wf_lemma_",
+#                                                Sys.Date(), ".RDS")))
 
 # 8. Begin testing the ordinal forest
 #-------------------------------------------------------------------------------
@@ -178,50 +191,47 @@ head(baked_dataframe)
 
 baked_test_dataframe <- as.data.frame(baked_data_test)
 
-cl <- makePSOCKcluster(5)
-registerDoParallel(cl)
-
+future::plan(future::multisession(workers = 3))
 ordforFitequal <- ordfor(depvar = "Value_Orientation", data = baked_dataframe)
-
-stopCluster(cl)
-## That is so much faster!!!
 
 # save the fit model
 saveRDS(ordforFitequal, here::here(paste0("output/forest_models/ordforFitequal_", Sys.Date(), ".RDS")))
+#saveRDS(ordforFitequal, here::here(paste0("output/forest_models/ordforFitequal_lemma_", Sys.Date(), ".RDS")))
 
 ## 8.2 The default parameters but the perffunction = "probability"
-cl <- makePSOCKcluster(5)
-registerDoParallel(cl)
+future::plan(future::multisession(workers = 3))
 ordforFitprob <- ordfor(depvar = "Value_Orientation", data = baked_dataframe,
                      perffunction = "probability")
 
-stopCluster(cl)
 # save the fit model
 saveRDS(ordforFitprob, here::here(paste0("output/forest_models/ordforFitprob_", Sys.Date(), ".RDS")))
+#saveRDS(ordforFitprob, here::here(paste0("output/forest_models/ordforFitprob_lemma_", Sys.Date(), ".RDS")))
 
 ## 8.3 The default parameters but the perffunction = "proportional"
-cl <- makePSOCKcluster(5)
-registerDoParallel(cl)
+future::plan(future::multisession(workers = 3))
 ordforFitpropor <- ordfor(depvar = "Value_Orientation", data = baked_dataframe,
                      perffunction = "probability")
 
 # save the fit model
-saveRDS(ordforFitpropor, here::here(paste0("output/forest_models/ordforFitpropor_", Sys.Date(), ".RDS")))
+#saveRDS(ordforFitpropor, here::here(paste0("output/forest_models/ordforFitpropor_", Sys.Date(), ".RDS")))
+saveRDS(ordforFitpropor, here::here(paste0("output/forest_models/ordforFitpropor_lemma_", Sys.Date(), ".RDS")))
 
 ## 8.4 The default parameters but the perffunction = "oneclass"
+future::plan(future::multisession(workers = 3))
 ordforFitoneclass <- ordfor(depvar = "Value_Orientation", data = baked_dataframe,
                      perffunction = "oneclass", classimp = "1")
 
 # save the fit model
 saveRDS(ordforFitoneclass, here::here(paste0("output/forest_models/ordforFitoneclass_", Sys.Date(), ".RDS")))
-stopCluster(cl)
+#saveRDS(ordforFitoneclass, here::here(paste0("output/forest_models/ordforFitoneclass_lemma_", Sys.Date(), ".RDS")))
+
 ## 8.5 The default parameters but the perffunction = "custom"
 ### when using a custom perffunction you need to define a vector of weights for
 ### each class. 
 ### In this example I want the more extreme options to have more weight.
 
 weights <- c(0.25, 0.1, 0.1, 0.1, 0.1, 0.1, 0.25)
-
+future::plan(future::multisession(workers = 3))
 ordforFitcustom <- ordfor(depvar = "Value_Orientation", 
                      data = baked_dataframe,
                      perffunction = "custom", # will need to define weight for each class 
@@ -229,26 +239,23 @@ ordforFitcustom <- ordfor(depvar = "Value_Orientation",
 
 # save the fit model
 saveRDS(ordforFitcustom, here::here(paste0("output/forest_models/ordforFitcustom_", Sys.Date(), ".RDS")))
-
-## If you get an error running stopCluster() run this code:
-## unregister_dopar <- function() {
-## env <- foreach:::.foreachGlobals
-## rm(list=ls(name=env), pos=env)
-## }
+#saveRDS(ordforFitcustom, here::here(paste0("output/forest_models/ordforFitcustom_lemma_", Sys.Date(), ".RDS")))
 
 ## 8.6 Tune/train the model and the perffunction = default
-cl <- makeCluster(4)
-registerDoParallel(cl)
+future::plan(future::multisession(workers = 3))
 ordforTrain <- train(Value_Orientation ~., data = baked_data,
                     method = "ordinalRF")
 
-stopCluster(cl)
 saveRDS(ordforTrain, here::here(paste0("output/ordforTrain_", Sys.Date(), ".RDS")))
+#saveRDS(ordforTrain, here::here(paste0("output/ordforTrain_lemma_", Sys.Date(), ".RDS")))
+
 ### Save the best fit parameters (not sure how to set the perffunction when training with caret,
 ### so I'm not sure if these parameters are appropriate to use when perffunction is changed) 
 OF_best <- ordforTrain$bestTune
-write_csv(OF_best, here::here(paste0("output/forest_models/OF_bestfit_params_", Sys.Date(),
+write_csv(OF_best, here::here(paste0("output/forest_models/OF_bestfit_params_simple_clean_", Sys.Date(),
                                      ".csv")))
+#write_csv(OF_best, here::here(paste0("output/forest_models/OF_bestfit_params_lemma_", Sys.Date(),
+#                                     ".csv")))
 
 ## 8.7 Use the best fit parameters in the ordfor() with perffunction = "default"
 future::plan(future::multisession(workers = 3))
@@ -256,9 +263,10 @@ ordforFit_tuneequal <- ordfor(depvar = "Value_Orientation", data = baked_datafra
                      nsets = OF_best$nsets,
                      ntreeperdiv = OF_best$ntreeperdiv,
                      ntreefinal = OF_best$ntreefinal)
-## this worked really quickly using future
+
 # save the fit model
 saveRDS(ordforFit_tuneequal, here::here(paste0("output/forest_models/ordforFit_tuneequal_", Sys.Date(), ".RDS")))
+#saveRDS(ordforFit_tuneequal, here::here(paste0("output/forest_models/ordforFit_tuneequal_lemma_", Sys.Date(), ".RDS")))
 
 ## 8.8 Use the best fit parameters in the ordfor() with perffunction = "probability"
 ordforFit_tuneprob <- ordfor(depvar = "Value_Orientation", data = baked_dataframe,
@@ -269,6 +277,7 @@ ordforFit_tuneprob <- ordfor(depvar = "Value_Orientation", data = baked_datafram
 
 # save the fit model
 saveRDS(ordforFit_tuneprob, here::here(paste0("output/forest_models/ordforFit_tuneprob_", Sys.Date(), ".RDS")))
+#saveRDS(ordforFit_tuneprob, here::here(paste0("output/forest_models/ordforFit_tuneprob_lemma_", Sys.Date(), ".RDS")))
 
 ## 8.9 Use the best fit parameters in the ordfor() with perffunction = "proportional"
 ordforFit_tunepropor <- ordfor(depvar = "Value_Orientation", data = baked_dataframe,
@@ -279,6 +288,7 @@ ordforFit_tunepropor <- ordfor(depvar = "Value_Orientation", data = baked_datafr
 
 # save the fit model
 saveRDS(ordforFit_tunepropor, here::here(paste0("output/forest_models/ordforFit_tunepropor_", Sys.Date(), ".RDS")))
+#saveRDS(ordforFit_tunepropor, here::here(paste0("output/forest_models/ordforFit_tunepropor_lemma_", Sys.Date(), ".RDS")))
 
 ## 8.10 Use the best fit parameters in the ordfor() with perffunction = "oneclass"
 ordforFit_tuneoneclass <- ordfor(depvar = "Value_Orientation", data = baked_dataframe,
@@ -289,6 +299,7 @@ ordforFit_tuneoneclass <- ordfor(depvar = "Value_Orientation", data = baked_data
 
 # save the fit model
 saveRDS(ordforFit_tuneoneclass, here::here(paste0("output/forest_models/ordforFit_tuneoneclass_", Sys.Date(), ".RDS")))
+#saveRDS(ordforFit_tuneoneclass, here::here(paste0("output/forest_models/ordforFit_tuneoneclass_lemma_", Sys.Date(), ".RDS")))
 
 ## 8.11 Use the best fit parameters in the ordfor() with perffunction = "custom"
 ordforFit_tunecustom <- ordfor(depvar = "Value_Orientation", data = baked_dataframe,
@@ -300,6 +311,7 @@ ordforFit_tunecustom <- ordfor(depvar = "Value_Orientation", data = baked_datafr
 
 # save the fit model
 saveRDS(ordforFit_tunecustom, here::here(paste0("output/forest_models/ordforFit_tunecustom_", Sys.Date(), ".RDS")))
+#saveRDS(ordforFit_tunecustom, here::here(paste0("output/forest_models/ordforFit_tunecustom_lemma_", Sys.Date(), ".RDS")))
 
 
 
